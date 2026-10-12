@@ -1,0 +1,18 @@
+CREATE TABLE IF NOT EXISTS users(id TEXT PRIMARY KEY,username TEXT UNIQUE NOT NULL,name TEXT NOT NULL,password_hash TEXT NOT NULL,role TEXT NOT NULL CHECK(role IN ('admin','vendedor','validador')),active BIGINT NOT NULL DEFAULT 1);
+CREATE TABLE IF NOT EXISTS events(id TEXT PRIMARY KEY,name TEXT NOT NULL,date TEXT,time TEXT,location TEXT,capacity BIGINT NOT NULL DEFAULT 0,price DOUBLE PRECISION NOT NULL DEFAULT 0,status TEXT NOT NULL DEFAULT 'activo',created_at TEXT NOT NULL,archived_at TEXT,currency TEXT NOT NULL DEFAULT 'CLP');
+CREATE TABLE IF NOT EXISTS tariffs(id TEXT PRIMARY KEY,event_id TEXT NOT NULL REFERENCES events(id),name TEXT NOT NULL,price_cents BIGINT NOT NULL CHECK(price_cents>0));
+CREATE TABLE IF NOT EXISTS ticket_batches(id TEXT PRIMARY KEY,event_id TEXT NOT NULL REFERENCES events(id),tariff_id TEXT NOT NULL REFERENCES tariffs(id),label TEXT NOT NULL,quantity BIGINT NOT NULL,start_number BIGINT NOT NULL,end_number BIGINT NOT NULL,created_at TEXT NOT NULL,created_by TEXT);
+CREATE TABLE IF NOT EXISTS tickets(id TEXT PRIMARY KEY,event_id TEXT NOT NULL REFERENCES events(id),token TEXT NOT NULL UNIQUE,status TEXT NOT NULL DEFAULT 'DISPONIBLE',price DOUBLE PRECISION NOT NULL DEFAULT 0,customer_name TEXT,customer_phone TEXT,paid_amount DOUBLE PRECISION NOT NULL DEFAULT 0,used_at TEXT,used_by TEXT,created_at TEXT NOT NULL,price_cents BIGINT NOT NULL DEFAULT 0,paid_cents BIGINT NOT NULL DEFAULT 0,ticket_number BIGINT,tariff_id TEXT,batch_id TEXT);
+CREATE TABLE IF NOT EXISTS validations(id TEXT PRIMARY KEY,ticket_id TEXT,event_id TEXT NOT NULL,user_name TEXT NOT NULL,result TEXT NOT NULL,date TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS payments(id TEXT PRIMARY KEY,ticket_id TEXT NOT NULL REFERENCES tickets(id),amount DOUBLE PRECISION NOT NULL,user_name TEXT,date TEXT NOT NULL,amount_cents BIGINT NOT NULL DEFAULT 0,method TEXT NOT NULL DEFAULT 'sin_clasificar');
+CREATE TABLE IF NOT EXISTS cash_movements(id TEXT PRIMARY KEY,type TEXT NOT NULL CHECK(type IN ('INGRESO','RETIRO')),amount DOUBLE PRECISION NOT NULL,description TEXT,user_name TEXT,date TEXT NOT NULL,amount_cents BIGINT NOT NULL DEFAULT 0,method TEXT NOT NULL DEFAULT 'sin_clasificar',ticket_id TEXT,currency TEXT NOT NULL DEFAULT 'CLP');
+CREATE TABLE IF NOT EXISTS sessions(id TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id),csrf TEXT NOT NULL,expires DOUBLE PRECISION NOT NULL);
+CREATE TABLE IF NOT EXISTS operations(user_id TEXT NOT NULL,key TEXT NOT NULL,fingerprint TEXT NOT NULL,response TEXT NOT NULL,date TEXT NOT NULL,PRIMARY KEY(user_id,key));
+CREATE TABLE IF NOT EXISTS audit(id TEXT PRIMARY KEY,user_id TEXT NOT NULL,action TEXT NOT NULL,detail TEXT NOT NULL,date TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS login_attempts(username TEXT,address TEXT,date DOUBLE PRECISION);
+CREATE INDEX IF NOT EXISTS idx_ticket_event_status ON tickets(event_id,status);
+CREATE INDEX IF NOT EXISTS idx_validation_date ON validations(date);
+CREATE INDEX IF NOT EXISTS idx_cash_date ON cash_movements(date);
+CREATE INDEX IF NOT EXISTS idx_audit_date ON audit(date);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_ticket_event_number ON tickets(event_id,ticket_number);
+CREATE INDEX IF NOT EXISTS idx_ticket_batch ON tickets(batch_id);

@@ -12,6 +12,9 @@ import secrets
 import sqlite3
 import time
 import zipfile
+from contextlib import closing
+
+from database import connect, is_postgres, init_postgres
 
 import qrcode
 from PIL import Image, ImageDraw, ImageFont
@@ -82,14 +85,15 @@ def cents(value, positive=False, whole=False):
 
 def create_app(database=None):
     app = Flask(__name__, static_folder=str(BASE / 'static'), static_url_path='/static')
-    app.config.update(DATABASE=str(database or BASE / 'tickets.db'), MAX_CONTENT_LENGTH=64 * 1024,
+    target = str(database or os.environ.get('DATABASE_URL') or BASE / 'tickets.db')
+    if database is None and os.environ.get('RENDER') and not is_postgres(target):
+        raise RuntimeError('Configura DATABASE_URL de Neon antes de arrancar en Render.')
+    app.config.update(DATABASE=target, MAX_CONTENT_LENGTH=64 * 1024,
                       SETUP_CODE=os.environ.get('ACCESO_SETUP_CODE') or secrets.token_urlsafe(18))
 
     def db():
         if 'db' not in g:
-            g.db = sqlite3.connect(app.config['DATABASE'], timeout=15, isolation_level=None)
-            g.db.row_factory = sqlite3.Row
-            g.db.execute('PRAGMA foreign_keys=ON')
+            g.db = connect(app.config['DATABASE'])
         return g.db
 
     @app.teardown_appcontext
@@ -231,10 +235,18 @@ def create_app(database=None):
             raise Problem('Contraseña de administrador incorrecta', 403)
 
     def reset_backup():
-        from backup import backup_database
-        target = Path(app.config['DATABASE']).resolve().parent / 'backups' / ('before-reset-' + secrets.token_hex(16) + '.db')
+        from backup import backup_database, backup_postgres
+        postgres = is_postgres(app.config['DATABASE'])
+        if postgres and os.environ.get('RENDER') and not os.environ.get('ACCESO_BACKUP_DIR'):
+            raise Problem('Configura almacenamiento persistente para los respaldos antes de restablecer.', 409)
+        directory = Path(os.environ.get('ACCESO_BACKUP_DIR') or
+                         (BASE / 'backups' if postgres else Path(app.config['DATABASE']).resolve().parent / 'backups'))
+        target = directory / ('before-reset-' + secrets.token_hex(16) + '.db')
         try:
-            backup_database(app.config['DATABASE'], target)
+            if postgres:
+                backup_postgres(db(), target)
+            else:
+                backup_database(app.config['DATABASE'], target)
         except Exception:
             app.logger.exception('Reset backup failed')
             raise Problem('No se pudo verificar el respaldo. No se borró ningún dato.', 503)
@@ -298,6 +310,11 @@ def create_app(database=None):
     @app.get('/')
     def index():
         return send_from_directory(BASE / 'static', 'index.html')
+
+    @app.get('/healthz')
+    def health():
+        db().execute('SELECT 1 FROM users LIMIT 1').fetchone()
+        return jsonify(ok=True)
 
     @app.get('/api/auth/status')
     def status():
@@ -366,7 +383,7 @@ def create_app(database=None):
     def bootstrap():
         events = [event(r) for r in db().execute("SELECT * FROM events WHERE status!='archivado' ORDER BY created_at DESC")]
         tariffs = [dict(r) for r in db().execute('SELECT * FROM tariffs ORDER BY price_cents')]
-        stats = [dict(r) for r in db().execute("SELECT event_id,count(*) issued,sum(status='DISPONIBLE') available,sum(status='VENDIDA') sold,sum(status='USADA') used FROM tickets GROUP BY event_id")]
+        stats = [dict(r) for r in db().execute("SELECT event_id,count(*) issued,sum(CASE WHEN status='DISPONIBLE' THEN 1 ELSE 0 END) available,sum(CASE WHEN status='VENDIDA' THEN 1 ELSE 0 END) sold,sum(CASE WHEN status='USADA' THEN 1 ELSE 0 END) used FROM tickets GROUP BY event_id")]
         return jsonify(events=events, tariffs=tariffs, stats=stats, user=g.user)
 
     @app.get('/api/users')
@@ -523,7 +540,7 @@ def create_app(database=None):
         draw.text((350,665), f"{event_row['date']} · {event_row['time']}", fill='#374151', font=normal, anchor='ma')
         draw.text((350,710), str(event_row['location'])[:55], fill='#374151', font=normal, anchor='ma')
         draw.text((350,755), f"{tariff_row['name']} · {event_row['currency']}", fill='#111827', font=normal, anchor='ma')
-        price = float(tariff_row.get('price_cents', 0)) / 100
+        price = float(tariff_row['price_cents']) / 100
         draw.text((350,805), f"PRECIO: {event_row['currency']} {price:,.2f}", fill='#111827', font=bold, anchor='ma')
         draw.text((350,855), 'Presenta este QR para ingresar', fill='#374151', font=normal, anchor='ma')
         out=io.BytesIO(); img.save(out, format='JPEG', quality=94, optimize=True); out.seek(0); return out.getvalue()
@@ -740,6 +757,17 @@ def create_app(database=None):
 
 
 def init_db(app):
+    if is_postgres(app.config['DATABASE']):
+        with closing(connect(app.config['DATABASE'])) as c:
+            c.execute('BEGIN IMMEDIATE')
+            try:
+                init_postgres(c)
+                c.execute('COMMIT')
+            except Exception:
+                if c.in_transaction:
+                    c.execute('ROLLBACK')
+                raise
+        return
     path = Path(app.config['DATABASE'])
     path.parent.mkdir(parents=True, exist_ok=True)
     c = sqlite3.connect(path, isolation_level=None)
@@ -810,7 +838,7 @@ def init_db(app):
 if __name__ == '__main__':
     app = create_app()
     init_db(app)
-    with sqlite3.connect(app.config['DATABASE']) as c:
+    with closing(connect(app.config['DATABASE'])) as c:
         if not c.execute('SELECT 1 FROM users LIMIT 1').fetchone():
             print('\nCódigo de instalación (solo primer administrador): ' + app.config['SETUP_CODE'], flush=True)
     print('Acceso: http://127.0.0.1:5000 — Para cámara móvil usa HTTPS.', flush=True)

@@ -12,3 +12,9 @@ ENLACE_CELULAR.txt
 ENLACE_CELULAR.html
 =3.0
 =3.0,
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+.tmp-*/

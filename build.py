@@ -4,7 +4,7 @@ from zipfile import ZipFile, ZIP_DEFLATED
 from datetime import datetime
 root = Path(__file__).resolve().parent
 output = root / ('Acceso-V8-' + datetime.now().strftime('%Y%m%d-%H%M%S') + '.zip')
-files = [root / name for name in ('server.py','backup.py','abrir_navegador.py','INICIAR.bat','RESPALDAR.bat','README.txt','requirements.txt')]
+files = [root / name for name in ('server.py','database.py','data_checks.py','postgres_schema.sql','backup.py','abrir_navegador.py','INICIAR.bat','RESPALDAR.bat','README.txt','requirements.txt','requirements-render.txt')]
 files += list((root / 'static').rglob('*'))
 with ZipFile(output, 'x', ZIP_DEFLATED) as archive:
     for file in files:
