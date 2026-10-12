@@ -1,0 +1,18 @@
+ENTRIX — De la venta al acceso
+
+Esta versión actualiza únicamente la presentación visual del sistema principal.
+
+Cambios:
+- Nueva identidad ENTRIX.
+- Logo y recursos de marca en static/branding/.
+- Nueva paleta azul eléctrico + violeta.
+- Sidebar y navegación renovados.
+- Login renovado.
+- Paneles, botones, formularios, estadísticas, estados y diálogos renovados.
+- Diseño responsive conservado y mejorado.
+- Funcionalidad de backend, SQLite, ventas, QR y validación no fue modificada intencionalmente.
+
+Archivos de respaldo visual:
+- static/app.css.bak
+- static/app.js.bak
+- static/index.html.bak

@@ -1,0 +1,1072 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ACCESO — Sistema de Entradas QR</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  :root{
+    --void:#0B0E14;
+    --panel:#131822;
+    --panel-raised:#1B2130;
+    --border:#262D3D;
+    --border-soft:#1E2434;
+    --text:#E8ECF4;
+    --text-muted:#8B93A7;
+    --text-faint:#5B637A;
+    --accent:#7C6FF0;
+    --accent-dim:#352C6E;
+    --accent-soft:rgba(124,111,240,0.14);
+    --green:#22C55E;
+    --green-soft:rgba(34,197,94,0.14);
+    --amber:#F5A524;
+    --amber-soft:rgba(245,165,36,0.14);
+    --red:#EF4444;
+    --red-soft:rgba(239,68,68,0.14);
+    --radius:8px;
+    --font-ui:'Space Grotesk', -apple-system, sans-serif;
+    --font-mono:'JetBrains Mono', 'Courier New', monospace;
+  }
+  @font-face{font-family:'Space Grotesk';src:local('Space Grotesk');}
+  * { box-sizing:border-box; }
+  html,body{ height:100%; }
+  body{
+    margin:0;
+    background:var(--void);
+    color:var(--text);
+    font-family:var(--font-ui);
+    -webkit-font-smoothing:antialiased;
+  }
+  #app{ min-height:100vh; display:flex; flex-direction:column; }
+
+  ::selection{ background:var(--accent-dim); }
+  a{ color:inherit; }
+  button{ font-family:inherit; cursor:pointer; }
+  input,select{ font-family:inherit; }
+
+  /* ---------- Login ---------- */
+  .login-wrap{
+    flex:1; display:flex; align-items:center; justify-content:center;
+    background:
+      radial-gradient(circle at 15% 20%, rgba(124,111,240,0.10), transparent 45%),
+      radial-gradient(circle at 85% 80%, rgba(34,197,94,0.06), transparent 40%),
+      var(--void);
+    padding:24px;
+  }
+  .login-card{ width:100%; max-width:400px; }
+  .brand-mark{
+    display:flex; align-items:center; gap:10px; margin-bottom:36px;
+  }
+  .brand-mark .dot{
+    width:10px;height:10px;border-radius:2px;background:var(--accent);
+    box-shadow:0 0 14px rgba(124,111,240,0.7);
+  }
+  .brand-mark span{ font-weight:600; font-size:15px; letter-spacing:0.02em; color:var(--text-muted); }
+  .login-card h1{
+    font-size:30px; font-weight:600; letter-spacing:-0.01em; margin:0 0 8px;
+    line-height:1.2;
+  }
+  .login-card p.sub{ color:var(--text-muted); font-size:14px; margin:0 0 32px; line-height:1.5; }
+  .role-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:20px; }
+  .role-btn{
+    background:var(--panel); border:1px solid var(--border); border-radius:var(--radius);
+    padding:18px 14px; text-align:left; color:var(--text); transition:border-color .15s, background .15s;
+  }
+  .role-btn:hover{ border-color:var(--accent); background:var(--panel-raised); }
+  .role-btn.active{ border-color:var(--accent); background:var(--accent-soft); }
+  .role-btn .role-title{ font-weight:600; font-size:14px; margin-bottom:4px; }
+  .role-btn .role-desc{ font-size:12px; color:var(--text-muted); line-height:1.4; }
+  .field{ margin-bottom:14px; }
+  .field label{ display:block; font-size:12px; color:var(--text-muted); margin-bottom:6px; }
+  .field input, .field select{
+    width:100%; background:var(--panel); border:1px solid var(--border); color:var(--text);
+    padding:11px 12px; border-radius:6px; font-size:14px; outline:none;
+  }
+  .field input:focus, .field select:focus{ border-color:var(--accent); }
+  .btn-primary{
+    width:100%; background:var(--accent); color:#fff; border:none; padding:12px 16px;
+    border-radius:6px; font-size:14px; font-weight:600; margin-top:6px;
+  }
+  .btn-primary:hover{ background:#8f83f5; }
+  .btn-primary:disabled{ background:var(--panel-raised); color:var(--text-faint); cursor:not-allowed; }
+  .login-hint{ margin-top:22px; font-size:12px; color:var(--text-faint); line-height:1.6; }
+
+  /* ---------- Shell ---------- */
+  .shell{ display:flex; flex:1; min-height:100vh; }
+  .rail{
+    width:208px; flex-shrink:0; background:var(--panel); border-right:1px solid var(--border);
+    display:flex; flex-direction:column; padding:18px 12px;
+  }
+  .rail-brand{ display:flex; align-items:center; gap:9px; padding:6px 8px 22px; }
+  .rail-brand .dot{ width:9px;height:9px;border-radius:2px;background:var(--accent); box-shadow:0 0 12px rgba(124,111,240,0.7); }
+  .rail-brand span{ font-weight:600; font-size:14px; }
+  .nav-item{
+    display:flex; align-items:center; gap:10px; padding:9px 10px; border-radius:6px;
+    color:var(--text-muted); font-size:13.5px; font-weight:500; margin-bottom:2px; border:none; background:none; width:100%; text-align:left;
+  }
+  .nav-item:hover{ background:var(--panel-raised); color:var(--text); }
+  .nav-item.active{ background:var(--accent-soft); color:var(--text); }
+  .nav-item .ic{ width:15px; text-align:center; opacity:0.85; }
+  .rail-footer{ margin-top:auto; padding:12px 10px 4px; border-top:1px solid var(--border-soft); }
+  .rail-user{ font-size:12.5px; color:var(--text-muted); margin-bottom:8px; }
+  .rail-user b{ color:var(--text); display:block; font-size:13px; }
+  .logout-btn{ background:none; border:1px solid var(--border); color:var(--text-muted); font-size:12px; padding:6px 10px; border-radius:6px; width:100%; }
+  .logout-btn:hover{ border-color:var(--red); color:var(--red); }
+
+
+  .rail-toggle{ display:flex; align-items:center; justify-content:center; width:34px; height:34px; margin:0 0 10px 2px; border:1px solid var(--border); border-radius:7px; background:var(--panel-raised); color:var(--text); font-size:18px; }
+  .rail-toggle:hover{ border-color:var(--accent); }
+  .shell.sidebar-collapsed .rail{ width:58px; padding-left:8px; padding-right:8px; }
+  .shell.sidebar-collapsed .rail-brand{ justify-content:center; padding-left:0; padding-right:0; }
+  .shell.sidebar-collapsed .rail-brand span, .shell.sidebar-collapsed .nav-label, .shell.sidebar-collapsed .rail-user{ display:none; }
+  .shell.sidebar-collapsed .nav-item{ justify-content:center; padding-left:6px; padding-right:6px; }
+  .shell.sidebar-collapsed .nav-item .ic{ width:auto; font-size:16px; }
+  .shell.sidebar-collapsed .rail-footer{ padding-left:0; padding-right:0; }
+  .shell.sidebar-collapsed .logout-btn{ font-size:0; padding:8px 4px; }
+  .shell.sidebar-collapsed .logout-btn:after{ content:'↪'; font-size:16px; }
+  .access-grid{display:grid;grid-template-columns:1.15fr .85fr;gap:16px;align-items:start}
+  .access-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .access-result{min-height:190px;display:flex;align-items:center;justify-content:center;text-align:center}
+  .camera-direct{width:100%;min-height:48px;font-size:15px}
+  .mobile-topbar{display:none}
+  @media (max-width:900px){
+    .main{ padding:18px 16px; }
+    .stat-row{ grid-template-columns:repeat(2,1fr); }
+  }
+  @media (max-width:700px){
+    .shell{display:block}
+    .rail{width:100%;height:auto;min-height:0;flex-direction:row;align-items:center;gap:6px;padding:8px 10px;border-right:0;border-bottom:1px solid var(--border);overflow-x:auto;position:sticky;top:0;z-index:20}
+    .rail-brand{padding:5px 8px;margin-right:2px;flex:0 0 auto}
+    .rail-toggle{margin:0;flex:0 0 34px}
+    .rail .nav-item{width:auto;flex:0 0 auto;margin:0;padding:8px 10px;white-space:nowrap}
+    .rail-footer{margin:0 0 0 auto;padding:0;border:0;display:flex;align-items:center;gap:6px;flex:0 0 auto}
+    .rail-user{display:none}
+    .logout-btn{width:auto;white-space:nowrap;padding:8px 10px}
+    .shell.sidebar-collapsed .rail{width:100%;padding:8px 10px}
+    .shell.sidebar-collapsed .rail-brand span,.shell.sidebar-collapsed .nav-label{display:inline}
+    .shell.sidebar-collapsed .nav-item{justify-content:flex-start;padding:8px 10px}
+    .shell.sidebar-collapsed .rail-brand{justify-content:flex-start;padding:5px 8px}
+    .shell.sidebar-collapsed .rail .ic{font-size:14px}
+    .main{max-height:none;min-height:calc(100vh - 58px);padding:14px 10px}
+    .access-grid{grid-template-columns:1fr}
+    .access-actions{grid-template-columns:1fr 1fr}
+    .panel{margin-bottom:12px}
+    .panel-head{padding:12px 14px}
+    .panel-body{padding:12px 14px}
+    .stat-row{grid-template-columns:1fr 1fr}
+    table{font-size:12px}
+    th,td{padding:9px 8px}
+    .scanner-wrap{grid-template-columns:1fr}
+    .scan-stage{min-height:260px}
+  }
+  @media (max-width:560px){
+    .stat-row{ grid-template-columns:1fr 1fr; gap:8px; }
+    .stat-card{ padding:12px; }
+    .main-header{ margin-bottom:14px; }
+    .main-header h2{ font-size:18px; }
+    .grid-2{ grid-template-columns:1fr; }
+  }
+
+  .main{ flex:1; padding:28px 34px; overflow-y:auto; max-height:100vh; min-width:0; }
+  .main-header{ display:flex; align-items:flex-end; justify-content:space-between; margin-bottom:22px; flex-wrap:wrap; gap:12px;}
+  .main-header h2{ font-size:20px; font-weight:600; margin:0 0 4px; letter-spacing:-0.01em; }
+  .main-header p{ margin:0; font-size:13px; color:var(--text-muted); }
+
+  /* ---------- Stat cards ---------- */
+  .stat-row{ display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:24px; }
+  .stat-card{ background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:16px 18px; }
+  .stat-card .label{ font-size:11.5px; color:var(--text-muted); margin-bottom:8px; }
+  .stat-card .value{ font-size:26px; font-weight:600; font-family:var(--font-mono); letter-spacing:-0.02em; }
+  .stat-card .value.green{ color:var(--green); }
+  .stat-card .value.amber{ color:var(--amber); }
+  .bar-track{ height:5px; background:var(--panel-raised); border-radius:3px; margin-top:10px; overflow:hidden; }
+  .bar-fill{ height:100%; background:var(--accent); border-radius:3px; transition:width .4s; }
+
+  /* ---------- Panels / tables ---------- */
+  .panel{ background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); margin-bottom:20px; }
+  .panel-head{ display:flex; align-items:center; justify-content:space-between; padding:14px 18px; border-bottom:1px solid var(--border-soft); }
+  .panel-head h3{ margin:0; font-size:14px; font-weight:600; }
+  .panel-body{ padding:16px 18px; }
+  table{ width:100%; border-collapse:collapse; font-size:13px; }
+  th{ text-align:left; color:var(--text-muted); font-weight:500; font-size:11.5px; padding:0 14px 10px; border-bottom:1px solid var(--border-soft); }
+  td{ padding:11px 14px; border-bottom:1px solid var(--border-soft); vertical-align:middle; }
+  tr:last-child td{ border-bottom:none; }
+  .mono{ font-family:var(--font-mono); font-size:12px; color:var(--text-muted); }
+  .badge{ display:inline-flex; align-items:center; gap:5px; padding:3px 9px; border-radius:20px; font-size:11px; font-weight:600; }
+  .badge.disponible{ background:var(--accent-soft); color:var(--accent); }
+  .badge.usada{ background:var(--amber-soft); color:var(--amber); }
+  .badge.activo{ background:var(--green-soft); color:var(--green); }
+  .badge.inactivo{ background:rgba(139,147,167,0.14); color:var(--text-muted); }
+  .badge.valid{ background:var(--green-soft); color:var(--green); }
+  .badge.used{ background:var(--amber-soft); color:var(--amber); }
+  .badge.invalid{ background:var(--red-soft); color:var(--red); }
+  .link-btn{ background:none; border:none; color:var(--accent); font-size:12.5px; font-weight:600; padding:0; }
+  .link-btn:hover{ text-decoration:underline; }
+  .btn{ background:var(--panel-raised); border:1px solid var(--border); color:var(--text); padding:8px 14px; border-radius:6px; font-size:13px; font-weight:500; }
+  .btn:hover{ border-color:var(--accent); }
+  .btn.primary{ background:var(--accent); border-color:var(--accent); color:#fff; }
+  .btn.primary:hover{ background:#8f83f5; }
+  .btn:disabled{ opacity:0.4; cursor:not-allowed; }
+  .empty{ text-align:center; padding:40px 20px; color:var(--text-faint); font-size:13px; }
+
+  .grid-2{ display:grid; grid-template-columns:1.1fr 1.4fr; gap:20px; align-items:start; }
+  @media (max-width:1000px){ .grid-2{ grid-template-columns:1fr; } .stat-row{ grid-template-columns:1fr 1fr; } }
+
+  /* form */
+  .form-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .form-grid .full{ grid-column:1/-1; }
+
+  /* modal */
+  .modal-overlay{
+    position:fixed; inset:0; background:rgba(6,8,12,0.72); display:flex; align-items:center; justify-content:center;
+    z-index:50; padding:20px;
+  }
+  .ticket-card{
+    background:#fff; color:#0B0E14; border-radius:14px; width:320px; overflow:hidden;
+    font-family:var(--font-ui);
+  }
+  .ticket-card .tc-head{ background:var(--accent); color:#fff; padding:16px 18px; }
+  .ticket-card .tc-head .ev{ font-weight:700; font-size:15px; }
+  .ticket-card .tc-head .meta{ font-size:12px; opacity:0.9; margin-top:2px; }
+  .ticket-card .tc-body{ padding:20px; display:flex; flex-direction:column; align-items:center; }
+  .qr-box{ background:#fff; padding:8px; border:1px solid #eee; border-radius:8px; }
+  .ticket-card .tc-token{ font-family:var(--font-mono); font-size:10.5px; color:#666; margin-top:14px; word-break:break-all; text-align:center; }
+  .ticket-card .tc-status{ margin-top:10px; }
+  .ticket-card .tc-close{ display:block; width:100%; text-align:center; padding:12px; border-top:1px solid #eee; background:#fafafa; color:#555; font-size:13px; font-weight:600; border:none; }
+
+  /* ---------- Scanner ---------- */
+  .scanner-wrap{ display:grid; grid-template-columns:340px 1fr; gap:20px; align-items:start; }
+  @media (max-width:900px){ .scanner-wrap{ grid-template-columns:1fr; } }
+  .scan-stage{
+    position:relative; min-height:420px; background:var(--panel); border:1px solid var(--border);
+    border-radius:var(--radius); display:flex; align-items:center; justify-content:center; overflow:hidden;
+  }
+  .scan-idle{ text-align:center; color:var(--text-faint); padding:30px; }
+  .scan-target{
+    width:150px; height:150px; border:2px dashed var(--border); border-radius:14px; margin:0 auto 18px;
+    display:flex; align-items:center; justify-content:center; font-size:34px; color:var(--text-faint);
+  }
+  .result-overlay{
+    position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    text-align:center; padding:30px; animation:pop .18s ease-out;
+  }
+  @keyframes pop{ from{ opacity:0; transform:scale(0.97);} to{opacity:1; transform:scale(1);} }
+  .result-overlay.ok{ background:linear-gradient(180deg, rgba(34,197,94,0.22), rgba(34,197,94,0.08)); }
+  .result-overlay.used{ background:linear-gradient(180deg, rgba(245,165,36,0.22), rgba(245,165,36,0.08)); }
+  .result-overlay.bad{ background:linear-gradient(180deg, rgba(239,68,68,0.22), rgba(239,68,68,0.08)); }
+  .result-icon{ font-size:56px; margin-bottom:14px; }
+  .result-title{ font-size:24px; font-weight:700; letter-spacing:-0.01em; margin-bottom:6px; }
+  .result-title.ok{ color:var(--green); }
+  .result-title.used{ color:var(--amber); }
+  .result-title.bad{ color:var(--red); }
+  .result-sub{ font-size:13px; color:var(--text-muted); line-height:1.6; }
+  .result-sub .mono{ color:var(--text); }
+  .scan-panel{ padding:18px; }
+  .scan-panel .field{ margin-bottom:12px; }
+
+  .notice{
+    display:flex; gap:10px; padding:11px 14px; border-radius:6px; font-size:12.5px; line-height:1.5;
+    background:var(--accent-soft); color:var(--text); border:1px solid var(--accent-dim); margin-bottom:16px;
+  }
+  .notice.warn{ background:var(--red-soft); border-color:rgba(239,68,68,0.35); }
+
+  /* concurrency demo */
+  .duel{ display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:16px; }
+  .duel-card{ background:var(--panel-raised); border:1px solid var(--border); border-radius:8px; padding:14px; }
+  .duel-card .duel-label{ font-size:11.5px; color:var(--text-muted); margin-bottom:8px; }
+  .duel-card .duel-result{ font-size:16px; font-weight:700; }
+  .duel-card .duel-result.ok{ color:var(--green); }
+  .duel-card .duel-result.used{ color:var(--amber); }
+  .duel-card .duel-time{ font-size:11px; color:var(--text-faint); margin-top:6px; font-family:var(--font-mono); }
+  .verdict{ margin-top:14px; padding:12px 14px; border-radius:8px; font-size:13px; font-weight:600; }
+  .verdict.pass{ background:var(--green-soft); color:var(--green); }
+  .verdict.fail{ background:var(--red-soft); color:var(--red); }
+  .toggle-row{ display:flex; align-items:center; gap:10px; margin:14px 0; }
+  .switch{ position:relative; width:40px; height:22px; background:var(--panel-raised); border:1px solid var(--border); border-radius:20px; }
+  .switch.on{ background:var(--accent-dim); border-color:var(--accent); }
+  .switch .knob{ position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%; background:var(--text-muted); transition:left .15s; }
+  .switch.on .knob{ left:20px; background:var(--accent); }
+
+  .code-note{ background:var(--panel-raised); border:1px solid var(--border-soft); border-radius:6px; padding:12px 14px; font-family:var(--font-mono); font-size:11.5px; color:var(--text-muted); line-height:1.7; white-space:pre-wrap; }
+
+  .sec-block{ margin-bottom:18px; }
+  .sec-block h4{ font-size:13.5px; margin:0 0 6px; color:var(--text); }
+  .sec-block p{ font-size:13px; color:var(--text-muted); line-height:1.65; margin:0; }
+
+  /* V7 - ventas y pagos */
+  .payment-ok{color:var(--green);font-weight:700}.payment-pending{color:var(--amber);font-weight:700}
+  .money{font-family:var(--font-mono);white-space:nowrap}
+  .ticket-print{width:360px;background:#fff;color:#111;padding:20px;font-family:Arial,sans-serif}
+  .ticket-print h2{margin:0 0 6px;font-size:21px}.ticket-print .small{font-size:12px;color:#555}
+  .ticket-print .qr-print{display:flex;justify-content:center;margin:18px 0}.ticket-print .line{border-top:1px dashed #bbb;margin:14px 0}
+  .payment-box{background:var(--panel-raised);border:1px solid var(--border);border-radius:8px;padding:14px;margin-top:12px}
+  .danger-note{background:var(--red-soft);color:var(--red);padding:10px 12px;border-radius:8px;font-size:13px;margin-top:10px}
+
+@media(max-width:700px){html,body{overflow-x:hidden}.shell{display:block}.rail{position:sticky;top:0;z-index:20;width:100%;height:58px;display:flex;align-items:center;gap:4px;padding:7px 8px;overflow-x:auto;border-right:0;border-bottom:1px solid var(--line)}.rail-brand{flex:0 0 auto;margin-right:4px}.rail-brand span{font-size:13px}.rail-toggle{display:none}.nav-item{flex:0 0 auto;width:auto;min-width:42px;height:40px;padding:0 9px}.nav-item .nav-label{font-size:11px}.rail-footer{margin-left:auto;border:0;padding:0}.rail-user{display:none}.logout-btn{white-space:nowrap;padding:8px}.main{width:100%;min-width:0;padding:12px 9px 80px}.main-header h2{font-size:22px}.main-header p{font-size:13px}.access-grid,.stat-row{grid-template-columns:1fr!important}.panel-body{padding:12px!important}.access-actions{grid-template-columns:1fr!important}.ticket-card{width:calc(100vw - 18px)!important;max-width:calc(100vw - 18px)!important}.modal-overlay{padding:9px}.field input,.field select,.btn,.btn-primary{min-height:46px;font-size:16px}table{min-width:680px}.panel-body{overflow-x:auto}.mobile-login{width:calc(100vw - 28px)}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+/* =========================================================
+   ESTADO EN MEMORIA (demo — sin persistencia ni backend real)
+   ========================================================= */
+const state = {
+  view: 'login',          // login | admin | validador
+  adminTab: 'eventos',    // eventos | entradas | ventas | auditoria | concurrencia | seguridad
+  currentUser: null,      // {role, name}
+  events: [],
+  tickets: [],
+  validations: [],
+  cash: [],
+  selectedEventId: null,     // admin: evento gestionado en "Entradas"
+  validatorEventId: null,    // validador: evento seleccionado para escanear
+  scanResult: null,          // resultado mostrado en el escáner principal
+  concTicketId: null,
+  concProtected: true,
+  concResults: null,
+  modalTicketId: null,
+  sidebarCollapsed: window.innerWidth <= 900,
+  _idSeq: 1,
+};
+
+function uid(prefix){ return prefix + '_' + (state._idSeq++); }
+
+function generateToken(){
+  const arr = new Uint8Array(24); // 192 bits de entropía
+  crypto.getRandomValues(arr);
+  return Array.from(arr, b => b.toString(16).padStart(2,'0')).join('');
+}
+
+function fmtDateTime(d){
+  if(!d) return '—';
+  const dt = new Date(d);
+  return dt.toLocaleDateString('es-PE',{day:'2-digit',month:'2-digit'}) + ' ' + dt.toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+function money(n){ return 'CLP $ ' + Math.max(0, Math.round(Number(n)||0)).toLocaleString('es-CL'); }
+function moneyInput(n){ return Math.max(0, Math.round(Number(n)||0)); }
+const ACCESS_KEY = '1234';
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+
+/* ---------- Bloqueo por-entrada (simula transacción atómica) ---------- */
+const locks = new Map();
+function withLock(key, fn){
+  const prev = locks.get(key) || Promise.resolve();
+  const run = prev.then(fn, fn);
+  locks.set(key, run.catch(()=>{}));
+  return run;
+}
+
+/* =========================================================
+   LÓGICA DE NEGOCIO
+   ========================================================= */
+async function api(path, options={}){
+  const res = await fetch(path, {headers:{'Content-Type':'application/json'}, ...options});
+  const data = await res.json().catch(()=>({}));
+  if(!res.ok) throw new Error(data.error || 'Error del servidor');
+  return data;
+}
+
+function normalizeEvent(e){ return {...e, id:String(e.id), capacity:Number(e.capacity||0), createdAt:new Date(e.createdAt)}; }
+function normalizeTicket(t){ return {...t, id:String(t.id), eventId:String(t.eventId), createdAt:new Date(t.createdAt), usedAt:t.usedAt?new Date(t.usedAt):null, paidAmount:Number(t.paidAmount||0), price:Number(t.price||0), balance:Number(t.balance||0)}; }
+
+async function loadData(){
+  const data=await api('/api/bootstrap');
+  state.events=data.events.map(normalizeEvent);
+  state.tickets=data.tickets.map(normalizeTicket);
+  state.validations=data.validations.map(v=>({...v,date:new Date(v.date)}));
+  if(!state.selectedEventId && state.events.length) state.selectedEventId=state.events[0].id;
+  if(!state.validatorEventId){ const a=state.events.find(e=>e.status==='activo'); state.validatorEventId=a?a.id:null; }
+}
+
+async function createEvent({name,date,time,location,capacity}){
+  const data=await api('/api/events',{method:'POST',body:JSON.stringify({name,date,time,location,capacity})});
+  const ev=normalizeEvent(data.event); state.events.push(ev); state.selectedEventId=ev.id;
+  if(data.tickets) state.tickets.push(...data.tickets.map(normalizeTicket));
+  return ev;
+}
+async function toggleEventStatus(id){
+  const data=await api('/api/events/'+encodeURIComponent(id)+'/status',{method:'PATCH'});
+  const ev=state.events.find(e=>e.id===id); if(ev) ev.status=data.event.status;
+}
+async function editEvent(id,patch){ const data=await api('/api/events/'+encodeURIComponent(id),{method:'PATCH',body:JSON.stringify(patch)}); const i=state.events.findIndex(e=>e.id===id); if(i>=0) state.events[i]=normalizeEvent(data.event); return data.event; }
+async function archiveEvent(id){ await api('/api/events/'+encodeURIComponent(id),{method:'DELETE'}); state.events=state.events.filter(e=>e.id!==id); state.selectedEventId=state.events[0]?.id||null; }
+async function generateTickets(eventId,qty){
+  const data=await api('/api/events/'+encodeURIComponent(eventId)+'/tickets/generate',{method:'POST',body:JSON.stringify({qty})});
+  const created=data.tickets.map(normalizeTicket); state.tickets.push(...created); return created;
+}
+function logValidation(ticket,eventId,userName,result){ /* auditoría la registra el servidor */ }
+async function validateSafe(token,eventId,userName){
+  const data=await api('/api/validate',{method:'POST',body:JSON.stringify({token,eventId,userName})});
+  if(data.ticket){
+    const i=state.tickets.findIndex(t=>t.id===String(data.ticket.id));
+    const nt=normalizeTicket(data.ticket); if(i>=0) state.tickets[i]=nt; else state.tickets.push(nt);
+  }
+  state.validations.unshift({...data.validation,date:new Date(data.validation.date)});
+  return data.result;
+}
+async function registerPayment(ticketId, amount){
+  const data=await api('/api/tickets/'+encodeURIComponent(ticketId)+'/payment',{method:'POST',body:JSON.stringify({amount})});
+  const i=state.tickets.findIndex(t=>t.id===String(ticketId)); if(i>=0) state.tickets[i]=normalizeTicket(data.ticket);
+  return normalizeTicket(data.ticket);
+}
+async function sellTicket(ticketId, customerName, customerPhone, price, initialPayment){
+  const data=await api('/api/tickets/'+encodeURIComponent(ticketId)+'/sale',{method:'POST',body:JSON.stringify({customerName,customerPhone,price,initialPayment})});
+  const i=state.tickets.findIndex(t=>t.id===String(ticketId)); if(i>=0) state.tickets[i]=normalizeTicket(data.ticket);
+  return normalizeTicket(data.ticket);
+}
+async function refreshValidations(){ const d=await api('/api/validations'); state.validations=d.validations.map(v=>({...v,date:new Date(v.date)})); }
+async function addCash(type,amount,description){ const d=await api('/api/cash',{method:'POST',body:JSON.stringify({type,amount,description,userName:state.currentUser?.name||'Administrador'})}); state.cash.unshift({...d.movement,date:new Date(d.movement.date)}); return d.movement; }
+
+/* =========================================================
+   RENDER
+   ========================================================= */
+const app = document.getElementById('app');
+function render(){
+  if(state.view === 'login') return renderLogin();
+  if(state.view === 'admin') return renderAdmin();
+  if(state.view === 'validador'){state.view='admin';state.adminTab='acceso';return renderAdmin();}
+}
+
+/* ---------- ACCESO POR CLAVE ---------- */
+function renderLogin(){
+ app.innerHTML=`<div class="login-wrap"><div class="login-card mobile-login"><div class="brand-mark"><div class="dot"></div><span>ACCESO — SISTEMA DE ENTRADAS</span></div><h1>Acceso al sistema</h1><p class="sub">Ingresa la clave de acceso para continuar.</p><div class="field"><label>Clave de acceso</label><input id="accessKey" type="password" inputmode="numeric" autocomplete="off" placeholder="Ingresa tu clave"></div><button class="btn-primary" id="loginBtn">Ingresar</button><div id="loginError" style="min-height:20px;margin-top:10px;color:#f87171;font-size:13px;text-align:center"></div><div class="login-hint">Sistema protegido por clave de acceso.</div></div></div>`;
+ const key=app.querySelector('#accessKey'); const go=()=>{ if(key.value!==ACCESS_KEY){app.querySelector('#loginError').textContent='Clave incorrecta.';key.focus();key.select();return;} state.currentUser={role:'acceso',name:'Acceso'};state.view='admin';state.adminTab='acceso';render();}; app.querySelector('#loginBtn').onclick=go; key.focus(); key.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();go();}};
+}
+
+function logout(){
+  state.currentUser = null; state.view='login'; state.scanResult=null; render();
+}
+
+/* ---------- ADMIN SHELL ---------- */
+function renderAdmin(){
+  const navItems = [
+    ['acceso','Acceso','⌁'],
+    ['eventos','Eventos','◧'],
+    ['entradas','Entradas','▤'],
+    ['ventas','Ventas','S/'],
+    ['caja','Caja','▣'],
+    ['auditoria','Auditoría','≡'],
+    ['concurrencia','Concurrencia','⇄'],
+    ['seguridad','Seguridad','⛨'],
+  ];
+  app.innerHTML = `
+  <div class="shell ${state.sidebarCollapsed?'sidebar-collapsed':''}">
+    <div class="rail">
+      <div class="rail-brand"><div class="dot"></div><span>ACCESO</span></div>
+      <button class="rail-toggle" id="railToggle" title="Minimizar/expandir menú">${state.sidebarCollapsed?'☰':'‹'}</button>
+      ${navItems.map(([key,label,ic])=>`
+        <button class="nav-item ${state.adminTab===key?'active':''}" data-tab="${key}">
+          <span class="ic">${ic}</span><span class="nav-label">${label}</span>
+        </button>`).join('')}
+      <div class="rail-footer">
+        <div class="rail-user"><b>${escapeHtml(state.currentUser.name)}</b>Sesión activa</div>
+        <button class="logout-btn" id="logoutBtn">Bloquear sistema</button>
+      </div>
+    </div>
+    <div class="main" id="mainArea"></div>
+  </div>`;
+  app.querySelectorAll('.nav-item').forEach(b=>b.onclick=()=>{ state.adminTab=b.dataset.tab; render(); });
+  app.querySelector('#railToggle').onclick = ()=>{ state.sidebarCollapsed=!state.sidebarCollapsed; render(); };
+  app.querySelector('#logoutBtn').onclick = logout;
+
+  const main = app.querySelector('#mainArea');
+  if(state.adminTab==='acceso') return renderTabAcceso(main);
+  if(state.adminTab==='eventos') return renderTabEventos(main);
+  if(state.adminTab==='entradas') return renderTabEntradas(main);
+  if(state.adminTab==='ventas') return renderTabVentas(main);
+  if(state.adminTab==='caja') return renderTabCaja(main);
+  if(state.adminTab==='auditoria') return renderTabAuditoria(main);
+  if(state.adminTab==='concurrencia') return renderTabConcurrencia(main);
+  if(state.adminTab==='seguridad') return renderTabSeguridad(main);
+}
+
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* ---------- TAB: ACCESO ---------- */
+function renderTabAcceso(main){
+  const activeEvents=state.events.filter(e=>e.status==='activo');
+  if(!state.validatorEventId && activeEvents.length) state.validatorEventId=activeEvents[0].id;
+  const ev=state.events.find(e=>e.id===state.validatorEventId) || activeEvents[0];
+  const r=state.scanResult;
+  let resultHtml=`<div class="access-result"><div><div style="font-size:42px;opacity:.35">▣</div><div style="color:var(--text-muted)">Listo para validar una entrada</div></div></div>`;
+  if(r){
+    const map={VALID:['🟢','ENTRADA VÁLIDA','Ingreso autorizado'],USED:['🟠','ENTRADA YA UTILIZADA','No se permite un segundo ingreso'],NOT_SOLD:['⚠️','ENTRADA NO VENDIDA','Esta entrada todavía no está liberada'],CANCELLED:['🚫','ENTRADA CANCELADA','No permite el ingreso'],PAYMENT_COMPLETE:['🟢','PAGO COMPLETO','La entrada está liberada. Aún falta validar el ingreso.'],PAYMENT_PENDING:['💰','PAGO PENDIENTE',`Saldo pendiente: <b>${money(r.balance)}</b>`],INVALID:['🔴','ENTRADA NO VÁLIDA',r.reason||'Token no válido']};
+    const m=map[r.result]||map.INVALID;
+    resultHtml=`<div class="access-result"><div><div style="font-size:40px">${m[0]}</div><div class="result-title ${r.result==='VALID'?'ok':(r.result==='PAYMENT_PENDING'?'used':'bad')}">${m[1]}</div><div class="result-sub">${m[2]}</div>${r.result==='PAYMENT_PENDING'?'<button class="btn primary" id="accessPay" style="margin-top:14px">Cobrar saldo</button>':''}${r.result==='PAYMENT_COMPLETE'?'<button class="btn primary" id="accessValidate" style="margin-top:14px">Validar ingreso</button>':''}</div></div>`;
+  }
+  main.innerHTML=`
+    <div class="main-header"><div><h2>Acceso</h2><p>Valida entradas desde este único panel. Puedes usar el lector o abrir directamente la cámara del celular.</p></div></div>
+    <div class="access-grid">
+      <div class="panel"><div class="panel-head"><h3>Validación de acceso</h3></div><div class="panel-body">
+        <div class="field"><label>Evento</label><select id="accessEvent">${activeEvents.length?activeEvents.map(e=>`<option value="${e.id}" ${e.id===state.validatorEventId?'selected':''}>${escapeHtml(e.name)}</option>`).join(''):'<option>No hay eventos activos</option>'}</select></div>
+        <div class="field"><label>QR / token</label><input id="accessToken" class="mono" placeholder="Escanea o escribe el token" autocomplete="off" inputmode="text"></div>
+        <div class="access-actions"><button class="btn primary" id="accessScan" ${ev?'':'disabled'}>Validar</button><button class="btn camera-direct" id="directCamera" ${ev?'':'disabled'}>📷 Cámara del celular</button></div>
+        <div id="directCameraBox" style="display:none;margin-top:10px"><video id="directCameraVideo" autoplay playsinline style="width:100%;max-height:52vh;object-fit:cover;border-radius:10px;background:#000"></video><button class="btn" id="stopDirectCamera" style="width:100%;margin-top:8px">Detener cámara</button></div>
+      </div></div>
+      <div class="panel"><div class="panel-head"><h3>Resultado</h3><button class="btn" id="nextAccess">Nueva validación</button></div><div class="panel-body">${resultHtml}</div></div>
+    </div>`;
+  const eventSel=main.querySelector('#accessEvent'); if(eventSel) eventSel.onchange=()=>{state.validatorEventId=eventSel.value;state.scanResult=null;render()};
+  const token=main.querySelector('#accessToken'); const scan=main.querySelector('#accessScan');
+  const doScan=async()=>{const value=(token.value||'').trim();if(!value||!ev)return;scan.disabled=true;try{state.scanResult=await validateSafe(value,ev.id,state.currentUser.name);render();}catch(e){alert(e.message);scan.disabled=false}};
+  if(token){token.focus();token.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();doScan()}}}
+  if(scan)scan.onclick=doScan;
+  const next=main.querySelector('#nextAccess');if(next)next.onclick=()=>{state.scanResult=null;render()};
+  
+  const pay=main.querySelector('#accessPay');if(pay&&r)pay.onclick=()=>openDoorPayment(r.ticket);
+  const accessValidate=main.querySelector('#accessValidate');if(accessValidate&&r)accessValidate.onclick=async()=>{try{state.scanResult=await validateSafe(r.ticket.token,state.validatorEventId,state.currentUser.name);render()}catch(e){alert(e.message)}};
+  const box=main.querySelector('#directCameraBox'),video=main.querySelector('#directCameraVideo'),cam=main.querySelector('#directCamera'),stop=main.querySelector('#stopDirectCamera');
+  let stream=null,frame=null;
+  const stopCam=()=>{if(window.__directQr){window.__directQr.stop().catch(()=>{});window.__directQr=null}if(frame)cancelAnimationFrame(frame);frame=null;if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}if(video)video.srcObject=null;if(box)box.style.display='none'};
+  if(cam)cam.onclick=async()=>{try{if(!window.isSecureContext)throw new Error('La cámara requiere HTTPS o localhost.');if('BarcodeDetector' in window){const detector=new BarcodeDetector({formats:['qr_code']});stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}}});video.srcObject=stream;box.style.display='block';const loop=async()=>{if(!stream)return;try{if(video.readyState>=2){const codes=await detector.detect(video);if(codes.length&&codes[0].rawValue){token.value=codes[0].rawValue;stopCam();doScan();return}}}catch(e){}frame=requestAnimationFrame(loop)};loop();return;}if(window.Html5Qrcode){box.style.display='block';video.style.display='none';const reader=document.createElement('div');reader.id='directQrReader';reader.style.cssText='width:100%';box.insertBefore(reader,video);const qr=new Html5Qrcode('directQrReader');window.__directQr=qr;await qr.start({facingMode:'environment'},{fps:10,qrbox:{width:220,height:220}},text=>{token.value=text;qr.stop().catch(()=>{});reader.remove();video.style.display='block';box.style.display='none';doScan()});return;}throw new Error('No hay lector QR disponible.');}catch(e){alert('No se pudo abrir la cámara: '+e.message)}};
+  if(stop)stop.onclick=stopCam;
+}
+
+/* ---------- TAB: EVENTOS ---------- */
+function renderTabEventos(main){
+  const totalTickets = state.tickets.length;
+  const usedTickets = state.tickets.filter(t=>t.status==='USADA').length;
+  const pct = totalTickets ? Math.round(usedTickets/totalTickets*100) : 0;
+
+  main.innerHTML = `
+    <div class="main-header">
+      <div><h2>Eventos</h2><p>Crea eventos y consulta el estado general de las entradas.</p></div>
+    </div>
+    <div class="stat-row">
+      <div class="stat-card"><div class="label">Eventos</div><div class="value">${state.events.length}</div></div>
+      <div class="stat-card"><div class="label">Entradas totales</div><div class="value">${totalTickets}</div></div>
+      <div class="stat-card"><div class="label">Utilizadas</div><div class="value amber">${usedTickets}</div></div>
+      <div class="stat-card"><div class="label">Asistencia</div><div class="value green">${pct}%</div>
+        <div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="panel">
+        <div class="panel-head"><h3>Nuevo evento</h3></div>
+        <div class="panel-body">
+          <div class="form-grid">
+            <div class="field full"><label>Nombre</label><input id="evName" placeholder="Conferencia Anual 2026" /></div>
+            <div class="field"><label>Fecha</label><input id="evDate" type="date" /></div>
+            <div class="field"><label>Hora</label><input id="evTime" type="time" /></div>
+            <div class="field full"><label>Ubicación</label><input id="evLoc" placeholder="Centro de Convenciones, Lima" /></div>
+            <div class="field"><label>Cantidad de entradas a generar</label><input id="evQty" type="number" min="1" value="20" /></div>
+            
+          </div>
+          <button class="btn primary" id="createEvBtn" style="margin-top:6px;width:100%">Crear evento y generar entradas</button>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h3>Eventos creados</h3></div>
+        <div class="panel-body" style="padding:0">
+          ${state.events.length===0 ? `<div class="empty">Aún no hay eventos. Crea el primero a la izquierda.</div>` : `
+          <table>
+            <thead><tr><th>Evento</th><th>Fecha</th><th>Entradas</th><th>Estado</th><th></th></tr></thead>
+            <tbody>
+              ${state.events.map(ev=>{
+                const n = state.tickets.filter(t=>t.eventId===ev.id).length;
+                return `<tr>
+                  <td><b>${escapeHtml(ev.name)}</b><div class="mono" style="margin-top:2px">${escapeHtml(ev.location)}</div></td>
+                  <td class="mono">${ev.date||'—'} ${ev.time||''}</td>
+                  <td>${n}</td>
+                  <td><span class="badge ${ev.status}">${ev.status}</span></td>
+                  <td style="text-align:right">
+                    <button class="link-btn" data-manage="${ev.id}">Entradas</button> <button class="link-btn" data-edit="${ev.id}">Editar</button> <button class="link-btn" data-archive="${ev.id}">Archivar</button>
+                  </td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>`}
+        </div>
+      </div>
+    </div>
+  `;
+
+  main.querySelector('#createEvBtn').onclick = ()=>{
+    const name = main.querySelector('#evName').value.trim();
+    if(!name){ main.querySelector('#evName').focus(); return; }
+    const date = main.querySelector('#evDate').value;
+    const time = main.querySelector('#evTime').value;
+    const location = main.querySelector('#evLoc').value.trim() || 'Por confirmar';
+    const qty = Math.max(1, Number(main.querySelector('#evQty').value)||1);
+    createEvent({name,date,time,location,capacity:qty}).then(()=>{ state.adminTab='entradas'; render(); }).catch(e=>alert(e.message));
+    return;
+    state.adminTab='entradas';
+    render();
+  };
+  main.querySelectorAll('[data-manage]').forEach(b=>b.onclick=()=>{
+    state.selectedEventId = b.dataset.manage; state.adminTab='entradas'; render();
+  });
+  main.querySelectorAll('[data-edit]').forEach(b=>b.onclick=async()=>{ const ev=state.events.find(e=>e.id===b.dataset.edit); if(!ev)return; const name=prompt('Nombre del evento:',ev.name); if(name===null)return; try{await editEvent(ev.id,{name:name.trim()||ev.name,date:ev.date,time:ev.time,location:ev.location});render();}catch(e){alert(e.message)} });
+  main.querySelectorAll('[data-archive]').forEach(b=>b.onclick=async()=>{if(!confirm('¿Archivar este evento?'))return;try{await archiveEvent(b.dataset.archive);render();}catch(e){alert(e.message)}});
+}
+
+/* ---------- TAB: ENTRADAS ---------- */
+function renderTabEntradas(main){
+  if(!state.selectedEventId && state.events.length) state.selectedEventId = state.events[0].id;
+  const ev = state.events.find(e=>e.id===state.selectedEventId);
+
+  main.innerHTML = `
+    <div class="main-header">
+      <div><h2>Entradas</h2><p>Genera entradas, revisa su estado y visualiza el código QR de cada una.</p></div>
+      <div class="field" style="min-width:240px;margin:0">
+        <select id="evPicker">
+          ${state.events.length===0 ? `<option>No hay eventos</option>` : state.events.map(e=>`<option value="${e.id}" ${e.id===state.selectedEventId?'selected':''}>${escapeHtml(e.name)}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    ${!ev ? `<div class="empty">Crea un evento primero, en la pestaña Eventos.</div>` : renderEntradasBody(ev)}
+  `;
+  const picker = main.querySelector('#evPicker');
+  if(picker) picker.onchange = ()=>{ state.selectedEventId = picker.value; render(); };
+  if(ev) wireEntradasBody(main, ev);
+}
+
+function renderEntradasBody(ev){
+  const tks = state.tickets.filter(t=>t.eventId===ev.id);
+  const used = tks.filter(t=>t.status==='USADA').length;
+  return `
+    <div class="stat-row">
+      <div class="stat-card"><div class="label">Evento</div><div class="value" style="font-size:15px;font-family:var(--font-ui)">${escapeHtml(ev.name)}</div></div>
+      <div class="stat-card"><div class="label">Total entradas</div><div class="value">${tks.length}</div></div>
+      <div class="stat-card"><div class="label">Disponibles</div><div class="value">${tks.length-used}</div></div>
+      <div class="stat-card"><div class="label">Utilizadas</div><div class="value amber">${used}</div></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head">
+        <h3>Generar más entradas</h3>
+        <button class="btn" id="toggleActive">${ev.status==='activo' ? 'Desactivar evento' : 'Activar evento'}</button>
+      </div>
+      <div class="panel-body" style="display:flex;gap:10px;align-items:flex-end">
+        <div class="field" style="margin:0"><label>Cantidad</label><input id="addQty" type="number" min="1" value="10" style="width:120px" /></div>
+        <button class="btn primary" id="addTicketsBtn">Generar entradas</button>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h3>Listado de entradas</h3></div>
+      <div class="panel-body" style="padding:0;max-height:420px;overflow:auto">
+        ${tks.length===0 ? `<div class="empty">Sin entradas todavía.</div>` : `
+        <table>
+          <thead><tr><th>Entrada</th><th>Cliente</th><th>Venta / pago</th><th>Estado</th><th>Usada</th><th></th></tr></thead>
+          <tbody>
+            ${tks.map(t=>`
+              <tr>
+                <td class="mono">${t.id}<div style="font-size:10px;color:var(--text-faint)" title="${t.token}">${t.token.slice(0,10)}…</div></td>
+                <td>${escapeHtml(t.customerName||'Sin asignar')}</td>
+                <td class="money">${t.status==='DISPONIBLE'?'—':'CLP $ '+t.paidAmount.toFixed(2)+' / CLP $ '+t.price.toFixed(2)}<div class="${t.status==='DISPONIBLE'?'payment-pending':(t.balance>0?'payment-pending':'payment-ok')}">${t.status==='DISPONIBLE'?'NO VENDIDA':(t.balance>0?'Debe CLP $ '+t.balance.toFixed(2):'PAGADO')}</div></td>
+                <td><span class="badge ${t.status==='USADA'?'usada':(t.status==='VENDIDA'?'valid':'disponible')}">${t.status}</span></td>
+                <td class="mono">${fmtDateTime(t.usedAt)}</td>
+                <td style="text-align:right;white-space:nowrap"><button class="link-btn" data-sale="${t.id}">Venta</button> <button class="link-btn" data-qr="${t.id}">Ticket</button></td>
+              </tr>`).join('')}
+          </tbody>
+        </table>`}
+      </div>
+    </div>
+  `;
+}
+
+function wireEntradasBody(main, ev){
+  const toggle = main.querySelector('#toggleActive');
+  if(toggle) toggle.onclick = async ()=>{ try{ await toggleEventStatus(ev.id); render(); }catch(e){alert(e.message);} };
+  const addBtn = main.querySelector('#addTicketsBtn');
+  if(addBtn) addBtn.onclick = async ()=>{
+    const qty = Math.max(1, Number(main.querySelector('#addQty').value)||1);
+    try{ await generateTickets(ev.id, qty); render(); }catch(e){ alert(e.message); }
+  };
+  main.querySelectorAll('[data-sale]').forEach(b=>b.onclick=()=>openSaleModal(b.dataset.sale));
+  main.querySelectorAll('[data-qr]').forEach(b=>b.onclick=()=>{
+    state.modalTicketId = b.dataset.qr; render(); openTicketModal();
+  });
+}
+
+/* ---------- Modal de entrada (QR) ---------- */
+function openTicketModal(){
+  const t = state.tickets.find(x=>x.id===state.modalTicketId);
+  if(!t) return;
+  const ev = state.events.find(e=>e.id===t.eventId);
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="ticket-card">
+      <div class="tc-head">
+        <div class="ev">${escapeHtml(ev.name)}</div>
+        <div class="meta">${ev.date||'Fecha por confirmar'} · ${ev.time||''} · ${escapeHtml(ev.location)}</div>
+      </div>
+      <div class="tc-body">
+        <div class="qr-box" id="qrHolder"></div>
+        <div class="tc-token">ENTRADA # ${t.id}</div>
+        <div style="margin-top:10px;text-align:center;font-size:12px">
+          <b>${escapeHtml(t.customerName||'Sin asignar')}</b><br/>
+          Fecha: ${escapeHtml(ev.date||'Por confirmar')} · Hora: ${escapeHtml(ev.time||'')}<br/>
+          Tarifa: <b>${money(t.price)}</b> · Pagado: <b>${money(t.paidAmount)}</b><br/>
+          <span class="${t.balance>0?'payment-pending':'payment-ok'}">${t.balance>0?'PENDIENTE: '+money(t.balance):'PAGADO'}</span>
+        </div>
+        <div class="tc-status"><span class="badge ${t.status==='USADA'?'usada':(t.status==='VENDIDA'?'valid':'disponible')}">${t.status}</span></div>
+      </div>
+      <button class="tc-close" id="printModal">Imprimir / Guardar PDF</button>
+      <button class="tc-close" id="jpgModal">Descargar ticket JPG</button><button class="tc-close whatsapp-btn" id="waModal">Enviar por WhatsApp</button>
+      <button class="tc-close" id="closeModal">Cerrar</button>
+    </div>`;
+  document.body.appendChild(overlay);
+  const holder = overlay.querySelector('#qrHolder');
+  try{
+    new QRCode(holder, { text: t.token, width:150, height:150, colorDark:'#0B0E14', colorLight:'#ffffff' });
+  }catch(e){
+    holder.innerHTML = `<div style="width:150px;height:150px;display:flex;align-items:center;justify-content:center;font-size:11px;color:#999;text-align:center;padding:8px;font-family:monospace">${t.token}</div>`;
+  }
+  overlay.querySelector('#printModal').onclick = ()=>printTicket(t,ev);
+  overlay.querySelector('#jpgModal').onclick = ()=>downloadTicketJpg(t,ev); overlay.querySelector('#waModal').onclick = ()=>shareTicketWhatsApp(t,ev);
+  overlay.querySelector('#closeModal').onclick = ()=>{ overlay.remove(); state.modalTicketId=null; };
+  overlay.onclick = (e)=>{ if(e.target===overlay){ overlay.remove(); state.modalTicketId=null; } };
+}
+
+/* ---------- TAB: AUDITORÍA ---------- */
+function renderTabVentas(main){
+  const sold=state.tickets.filter(t=>t.customerName); const paid=sold.reduce((a,t)=>a+t.paidAmount,0); const pending=sold.reduce((a,t)=>a+t.balance,0);
+  main.innerHTML=`<div class="main-header"><div><h2>Ventas y pagos</h2><p>Registra compradores, abonos y saldos pendientes. Una entrada con saldo pendiente no permite el ingreso.</p></div></div>
+  <div class="stat-row"><div class="stat-card"><div class="label">Ventas</div><div class="value">${sold.length}</div></div><div class="stat-card"><div class="label">Cobrado</div><div class="value green">${money(paid)}</div></div><div class="stat-card"><div class="label">Por cobrar</div><div class="value amber">${money(pending)}</div></div><div class="stat-card"><div class="label">Pagadas</div><div class="value">${sold.filter(t=>t.balance<=0).length}</div></div></div>
+  <div class="panel"><div class="panel-head"><h3>Ventas registradas</h3></div><div class="panel-body" style="padding:0;max-height:560px;overflow:auto">${sold.length?`<table><thead><tr><th>Entrada</th><th>Evento</th><th>Cliente</th><th>Tarifa</th><th>Pagado</th><th>Saldo</th><th></th></tr></thead><tbody>${sold.map(t=>{const e=state.events.find(x=>x.id===t.eventId);return `<tr><td class="mono">${t.id}</td><td>${escapeHtml(e?.name||'—')}</td><td>${escapeHtml(t.customerName||'—')}<div style="font-size:10px;color:var(--text-faint)">${escapeHtml(t.customerPhone||'')}</div></td><td class="money">${money(t.price)}</td><td class="money">${money(t.paidAmount)}</td><td class="money ${t.balance>0?'payment-pending':'payment-ok'}">${money(t.balance)}</td><td style="white-space:nowrap"><button class="link-btn" data-sale="${t.id}">Gestionar pago</button> <button class="link-btn" data-qr="${t.id}">Ticket</button></td></tr>`}).join('')}</tbody></table>`:`<div class="empty">Todavía no hay ventas. Ve a Entradas y registra un comprador.</div>`}</div></div>`;
+  main.querySelectorAll('[data-sale]').forEach(b=>b.onclick=()=>openSaleModal(b.dataset.sale));
+  main.querySelectorAll('[data-qr]').forEach(b=>b.onclick=()=>{state.modalTicketId=b.dataset.qr;openTicketModal();});
+}
+
+async function createTicketJpgBlob(t,ev){
+ if(typeof html2canvas==='undefined')throw new Error('No se pudo cargar el generador JPG.');
+ const host=document.createElement('div');host.style.cssText='position:fixed;left:-10000px;top:0;width:420px;background:#fff;z-index:-1';const card=document.createElement('div');card.style.cssText='width:420px;background:#fff;color:#111;padding:26px;font-family:Arial,sans-serif;box-sizing:border-box';
+ card.innerHTML=`<div style="text-align:center;font-size:13px;color:#666;letter-spacing:1px">SISTEMA DE ENTRADAS</div><div style="text-align:center;font-size:25px;font-weight:700;margin:8px 0">${escapeHtml(ev.name)}</div><div style="text-align:center;font-size:13px;color:#555">${escapeHtml(ev.date||'Fecha por confirmar')} · ${escapeHtml(ev.time||'')}<br>${escapeHtml(ev.location||'')}</div><div id="jpgQr" style="width:220px;height:220px;margin:20px auto"></div><div style="text-align:center;font-family:monospace;font-size:15px;font-weight:700">ENTRADA # ${escapeHtml(t.id)}</div><hr style="border:0;border-top:1px dashed #999;margin:18px 0"><div style="font-size:14px;line-height:1.8"><b>Cliente:</b> ${escapeHtml(t.customerName||'Sin asignar')}<br><b>Tarifa:</b> ${t.status==='DISPONIBLE'?'Por definir':money(t.price)}<br><b>Pagado:</b> ${t.status==='DISPONIBLE'?'—':money(t.paidAmount)}<br><b>Saldo:</b> ${t.status==='DISPONIBLE'?'Por definir':money(t.balance)}</div><div style="text-align:center;font-weight:700;font-size:16px;margin-top:16px">${t.status==='DISPONIBLE'?'ENTRADA NO VENDIDA':(t.balance>0?'PAGO PENDIENTE':'LIBERADA')}</div><div style="text-align:center;color:#666;font-size:11px;margin-top:18px">El acceso se habilita únicamente cuando la entrada esté totalmente pagada.</div>`;
+ host.appendChild(card);document.body.appendChild(host);new QRCode(card.querySelector('#jpgQr'),{text:t.token,width:220,height:220,correctLevel:QRCode.CorrectLevel.M});await new Promise(r=>setTimeout(r,300));const canvas=await html2canvas(card,{scale:3,backgroundColor:'#fff',useCORS:true,logging:false});const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',0.95));host.remove();if(!blob)throw new Error('No se pudo crear el JPG');return blob;
+}
+async function downloadTicketJpg(t,ev){try{const blob=await createTicketJpgBlob(t,ev);const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`Entrada-${t.id}.jpg`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);}catch(e){alert('No se pudo descargar el ticket JPG: '+e.message)}}
+async function shareTicketWhatsApp(t,ev){try{const text=`🎟️ ${ev.name}\nEntrada #${t.id}\nCliente: ${t.customerName||'Sin asignar'}\nTarifa: ${t.status==='DISPONIBLE'?'Por definir':money(t.price)}\nPagado: ${t.status==='DISPONIBLE'?'—':money(t.paidAmount)}\nSaldo: ${t.status==='DISPONIBLE'?'Por definir':money(t.balance)}\nEstado: ${t.status==='DISPONIBLE'?'NO VENDIDA':(t.balance>0?'PAGO PENDIENTE':'LIBERADA')}`;if(navigator.share){const blob=await createTicketJpgBlob(t,ev);const file=new File([blob],`Entrada-${t.id}.jpg`,{type:'image/jpeg'});if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({title:`Entrada #${t.id}`,text,files:[file]});return;}await navigator.share({title:`Entrada #${t.id}`,text});return;}window.open('https://wa.me/?text='+encodeURIComponent(text),'_blank');}catch(e){if(e.name!=='AbortError')alert('No se pudo compartir: '+e.message)}}
+
+function printTicket(t,ev){
+  const w=window.open('','_blank','width=430,height=760'); if(!w)return;
+  w.document.write(`<!doctype html><html><head><title>Entrada #${t.id}</title><style>body{margin:0;background:#eee;font-family:Arial,sans-serif}.ticket{width:360px;margin:20px auto;background:#fff;padding:22px;box-sizing:border-box;border-radius:12px}.brand{text-align:center;font-size:12px;color:#777;letter-spacing:1px}.event{text-align:center;font-size:21px;font-weight:700;margin-top:8px}.meta{text-align:center;font-size:12px;color:#555;margin-top:5px}.qr{text-align:center;margin:18px 0}.qr img{width:180px;height:180px}.id{text-align:center;font-family:monospace;font-size:14px;font-weight:700}.line{border-top:1px dashed #999;margin:15px 0}.row{font-size:13px;margin:6px 0}.pay{text-align:center;font-weight:700;margin-top:12px}.warn{color:#b45309}.ok{color:#15803d}.foot{font-size:11px;color:#666;text-align:center;margin-top:18px;line-height:1.5}@media print{body{background:#fff}.ticket{margin:0;width:100%;box-shadow:none}}</style></head><body><div class="ticket"><div class="brand">SISTEMA DE ENTRADAS</div><div class="event">${escapeHtml(ev.name)}</div><div class="meta">${escapeHtml(ev.date||'Fecha por confirmar')} · ${escapeHtml(ev.time||'')} · ${escapeHtml(ev.location||'')}</div><div class="qr" id="q"></div><div class="id">ENTRADA # ${escapeHtml(t.id)}</div><div class="line"></div><div class="row"><b>Cliente:</b> ${escapeHtml(t.customerName||'Sin asignar')}</div><div class="row"><b>Tarifa:</b> ${t.status==='DISPONIBLE'?'Por definir':'CLP $ '+t.price.toFixed(2)}</div><div class="row"><b>Pagado:</b> ${t.status==='DISPONIBLE'?money(0):'CLP $ '+t.paidAmount.toFixed(2)}</div><div class="pay ${t.status==='DISPONIBLE'?'warn':(t.balance>0?'warn':'ok')}">${t.status==='DISPONIBLE'?'ENTRADA NO VENDIDA':(t.balance>0?'SALDO PENDIENTE: '+money(t.balance):'PAGO COMPLETO')}</div><div class="foot">Presentar este código QR en el ingreso del evento.<br/>El acceso solo se habilita cuando la entrada esté totalmente pagada.</div></div></body></html>`); w.document.close(); const img=new w.Image(); img.onload=()=>{w.print()}; img.onerror=()=>{w.print()}; img.src='https://api.qrserver.com/v1/create-qr-code/?size=180x180&data='+encodeURIComponent(t.token); setTimeout(()=>w.print(),700);
+}
+
+function openSaleModal(ticketId){
+  const t=state.tickets.find(x=>x.id===ticketId); if(!t)return; const e=state.events.find(x=>x.id===t.eventId);
+  const unsold=!t.customerName;
+  const overlay=document.createElement('div'); overlay.className='modal-overlay';
+  overlay.innerHTML=`<div class="ticket-card" style="width:390px;max-width:calc(100vw - 24px)"><div class="tc-head"><div class="ev">${unsold?'Venta':'Pago'} — ${escapeHtml(e?.name||'')}</div><div class="meta">Entrada #${t.id}</div></div><div class="tc-body" style="align-items:stretch">
+  <div class="field"><label>Cliente</label><input id="saleName" value="${escapeHtml(t.customerName||'')}" placeholder="Nombre completo" ${unsold?'':'readonly'}></div>
+  <div class="field"><label>Celular</label><input id="salePhone" value="${escapeHtml(t.customerPhone||'')}" placeholder="999999999" ${unsold?'':'readonly'}></div>
+  ${unsold?`<div class="field"><label>Tarifa de esta entrada (CLP $)</label><input id="salePrice" type="number" min="0.01" step="0.01" value="" placeholder="Coloca el precio al vender"></div>`:`<div class="payment-box"><div>Tarifa: <b>${money(t.price)}</b></div><div>Pagado: <b>${money(t.paidAmount)}</b></div><div class="${t.balance>0?'payment-pending':'payment-ok'}">Saldo: ${money(t.balance)}</div></div>`}
+  ${unsold?`<div class="field" style="margin-top:2px"><label>Pago inicial (CLP $)</label><input id="salePayment" type="number" min="0" step="0.01" value="" placeholder="0.00"></div>`:`<div class="field" style="margin-top:12px"><label>Nuevo abono (CLP $)</label><input id="salePayment" type="number" min="0" max="${t.balance.toFixed(2)}" step="0.01" value="${t.balance>0?'':'0'}" ${t.balance<=0?'disabled':''}></div>`}
+  <button class="btn primary" id="saveSale">${unsold?'Guardar venta':'Registrar abono'}</button>
+  <div class="danger-note">La tarifa se fija al momento de vender. Si queda saldo pendiente, el QR existe pero el validador bloqueará el ingreso.</div></div><button class="tc-close" id="closeSale">Cerrar</button></div>`;
+  document.body.appendChild(overlay);
+  overlay.querySelector('#closeSale').onclick=()=>overlay.remove();
+  overlay.querySelector('#saveSale').onclick=async()=>{try{
+    const name=overlay.querySelector('#saleName').value.trim(); const phone=overlay.querySelector('#salePhone').value.trim(); const p=Number(overlay.querySelector('#salePayment').value)||0;
+    if(unsold){ const price=Number(overlay.querySelector('#salePrice').value)||0; if(!name){alert('Ingresa el nombre del comprador.');return;} if(price<=0){alert('Coloca la tarifa de esta entrada.');return;} if(p>price){alert('El pago inicial no puede superar la tarifa.');return;} await sellTicket(t.id,name,phone,price,p); }
+    else { if(t.balance<=0){alert('Esta entrada ya está totalmente pagada.');return;} await registerPayment(t.id,p); }
+    overlay.remove(); render();
+  }catch(err){alert(err.message)}};
+}
+function renderTabCaja(main){
+ const ingresos=state.cash.filter(x=>x.type==='INGRESO').reduce((a,x)=>a+Number(x.amount),0); const retiros=state.cash.filter(x=>x.type==='RETIRO').reduce((a,x)=>a+Number(x.amount),0); const saldo=ingresos-retiros;
+ main.innerHTML=`<div class="main-header"><div><h2>Caja</h2><p>Control de ingresos, retiros y saldo de caja.</p></div></div><div class="stat-row"><div class="stat-card"><div class="label">Ingresos</div><div class="value green">CLP $ ${ingresos.toFixed(2)}</div></div><div class="stat-card"><div class="label">Retiros</div><div class="value amber">CLP $ ${retiros.toFixed(2)}</div></div><div class="stat-card"><div class="label">Saldo</div><div class="value">CLP $ ${saldo.toFixed(2)}</div></div></div><div class="panel"><div class="panel-head"><h3>Registrar movimiento</h3></div><div class="panel-body"><div class="form-grid"><div class="field"><label>Tipo</label><select id="cashType"><option value="INGRESO">Ingreso</option><option value="RETIRO">Retiro</option></select></div><div class="field"><label>Monto (CLP $)</label><input id="cashAmount" type="number" min="0" step="0.01"></div><div class="field full"><label>Descripción</label><input id="cashDesc" placeholder="Ej. retiro para cambio"></div></div><button class="btn primary" id="cashSave">Guardar movimiento</button></div></div><div class="panel"><div class="panel-head"><h3>Movimientos</h3></div><div class="panel-body" style="padding:0;max-height:450px;overflow:auto">${state.cash.length?`<table><thead><tr><th>Fecha</th><th>Tipo</th><th>Monto</th><th>Descripción</th><th>Usuario</th></tr></thead><tbody>${state.cash.map(x=>`<tr><td class="mono">${fmtDateTime(x.date)}</td><td>${x.type}</td><td class="money">CLP $ ${Number(x.amount).toFixed(2)}</td><td>${escapeHtml(x.description||'')}</td><td>${escapeHtml(x.userName||'')}</td></tr>`).join('')}</tbody></table>`:`<div class="empty">Sin movimientos de caja.</div>`}</div></div>`;
+ main.querySelector('#cashSave').onclick=async()=>{try{const a=Number(main.querySelector('#cashAmount').value)||0;if(a<=0)return alert('Ingresa un monto.');await addCash(main.querySelector('#cashType').value,a,main.querySelector('#cashDesc').value.trim());render();}catch(e){alert(e.message)}};
+}
+
+function renderTabAuditoria(main){
+  main.innerHTML = `
+    <div class="main-header"><div><h2>Auditoría</h2><p>Historial de todos los intentos de validación, exitosos o no.</p></div></div>
+    <div class="panel">
+      <div class="panel-body" style="padding:0;max-height:560px;overflow:auto">
+        ${state.validations.length===0 ? `<div class="empty">Todavía no se registraron validaciones. Ve a la vista de Validador para escanear entradas.</div>` : `
+        <table>
+          <thead><tr><th>Fecha/Hora</th><th>Entrada</th><th>Evento</th><th>Validador</th><th>Resultado</th></tr></thead>
+          <tbody>
+            ${state.validations.map(v=>{
+              const ev = state.events.find(e=>e.id===v.eventId);
+              const badgeClass = v.result==='VALID'?'valid':(v.result==='USED'?'used':'invalid');
+              const label = v.result==='VALID'?'VÁLIDA':(v.result==='USED'?'YA UTILIZADA':'NO VÁLIDA');
+              return `<tr>
+                <td class="mono">${fmtDateTime(v.date)}</td>
+                <td class="mono">${v.ticketId ? v.ticketId : '—'}</td>
+                <td>${ev ? escapeHtml(ev.name) : '—'}</td>
+                <td>${escapeHtml(v.userName)}</td>
+                <td><span class="badge ${badgeClass}">${label}</span></td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>`}
+      </div>
+    </div>
+  `;
+}
+
+/* ---------- TAB: CONCURRENCIA (demo del doble escaneo) ---------- */
+function renderTabConcurrencia(main){
+  const available = state.tickets.filter(t=>t.status==='DISPONIBLE');
+  if(!state.concTicketId && available.length) state.concTicketId = available[0].id;
+
+  main.innerHTML = `
+    <div class="main-header"><div><h2>Doble escaneo simultáneo</h2><p>Reproduce, en el navegador, el escenario crítico de la sección 5: dos validaciones para la misma entrada casi al mismo tiempo.</p></div></div>
+    <div class="notice">Elige una entrada disponible y dispara dos validaciones concurrentes. Con la protección activada, solo una puede marcar la entrada como usada — la operación es atómica por entrada (equivalente a una transacción con bloqueo en la base de datos real).</div>
+    <div class="panel">
+      <div class="panel-body">
+        <div class="form-grid">
+          <div class="field full">
+            <label>Entrada a probar</label>
+            <select id="concPicker">
+              ${available.length===0 ? `<option>No hay entradas disponibles — genera alguna primero</option>` :
+                available.map(t=>`<option value="${t.id}" ${t.id===state.concTicketId?'selected':''}>${t.token.slice(0,18)}… — ${state.events.find(e=>e.id===t.eventId)?.name||''}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div class="toggle-row">
+          <button id="concToggle" class="switch ${state.concProtected?'on':''}"><div class="knob"></div></button>
+          <div>
+            <div style="font-size:13px;font-weight:600">${state.concProtected ? 'Con protección (bloqueo atómico)' : 'Sin protección (condición de carrera)'}</div>
+            <div style="font-size:12px;color:var(--text-muted)">${state.concProtected ? 'validateSafe(): lectura + escritura dentro de un lock por entrada' : 'validateUnsafe(): lee, espera, y recién entonces decide — vulnerable'}</div>
+          </div>
+        </div>
+        <button class="btn primary" id="runDuel" ${available.length===0?'disabled':''}>Simular escaneo doble simultáneo</button>
+        <div id="duelArea"></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h3>Por qué ocurre el problema</h3></div>
+      <div class="panel-body code-note">// Sin protección — dos peticiones concurrentes:
+1) Escaneo A lee estado → DISPONIBLE
+2) Escaneo B lee estado → DISPONIBLE   (antes de que A escriba)
+3) Escaneo A escribe → USADA
+4) Escaneo B escribe → USADA           ← BUG: ambas dieron "válida"
+
+// Con protección — bloqueo por entrada (o UPDATE ... WHERE status='DISPONIBLE' en SQL real):
+1) Escaneo A adquiere el lock, lee DISPONIBLE, escribe USADA, libera
+2) Escaneo B espera el lock, luego lee USADA → responde "ya utilizada"</div>
+    </div>
+  `;
+
+  const picker = main.querySelector('#concPicker');
+  if(picker) picker.onchange = ()=>{ state.concTicketId = picker.value; state.concResults=null; render(); };
+  const toggle = main.querySelector('#concToggle');
+  toggle.onclick = ()=>{ state.concProtected = !state.concProtected; state.concResults=null; render(); };
+  const runBtn = main.querySelector('#runDuel');
+  runBtn.onclick = ()=> runConcurrencyDuel(main);
+
+  if(state.concResults) renderDuelResults(main.querySelector('#duelArea'));
+}
+
+async function runConcurrencyDuel(main){
+  const ticket = state.tickets.find(t=>t.id===state.concTicketId);
+  if(!ticket) return;
+  const ev = state.events.find(e=>e.id===ticket.eventId);
+  main.querySelector('#runDuel').disabled = true;
+  main.querySelector('#duelArea').innerHTML = `<div class="empty">Ejecutando dos validaciones en paralelo…</div>`;
+
+  const t0 = performance.now();
+  let resA, resB;
+  if(state.concProtected){
+    [resA, resB] = await Promise.all([
+      validateSafe(ticket.token, ev.id, 'Validador — Puerta A'),
+      validateSafe(ticket.token, ev.id, 'Validador — Puerta B'),
+    ]);
+  } else {
+    [resA, resB] = await Promise.all([
+      validateUnsafe(ticket, 'Validador — Puerta A'),
+      validateUnsafe(ticket, 'Validador — Puerta B'),
+    ]);
+  }
+  const dt = Math.round(performance.now()-t0);
+
+  const bothValid = resA.result==='VALID' && resB.result==='VALID';
+  state.concResults = { resA, resB, dt, bothValid, protectedMode: state.concProtected };
+  render();
+}
+
+function renderDuelResults(el){
+  if(!el) return;
+  const {resA, resB, dt, bothValid, protectedMode} = state.concResults;
+  const cardHtml = (label, r) => `
+    <div class="duel-card">
+      <div class="duel-label">${label}</div>
+      <div class="duel-result ${r.result==='VALID'?'ok':'used'}">${r.result==='VALID'?'✓ ENTRADA VÁLIDA':'⚠ YA UTILIZADA'}</div>
+      <div class="duel-time">respondió en ~${dt}ms</div>
+    </div>`;
+  el.innerHTML = `
+    <div class="duel">
+      ${cardHtml('Escaneo A (Puerta A)', resA)}
+      ${cardHtml('Escaneo B (Puerta B)', resB)}
+    </div>
+    <div class="verdict ${bothValid ? 'fail' : 'pass'}">
+      ${bothValid
+        ? '✕ Falló: ambas puertas aceptaron la misma entrada como válida. Esto es exactamente lo que el sistema real no debe permitir.'
+        : '✓ Correcto: solo una de las dos validaciones marcó la entrada como usada; la otra recibió "ya utilizada".'}
+      ${!protectedMode && !bothValid ? ' (con la latencia usada en esta demo, a veces el modo sin protección también acierta por casualidad — vuelve a intentarlo varias veces para ver el bug de forma consistente).' : ''}
+    </div>
+  `;
+}
+
+/* ---------- TAB: SEGURIDAD (notas técnicas) ---------- */
+function renderTabSeguridad(main){
+  main.innerHTML = `
+    <div class="main-header"><div><h2>Seguridad</h2><p>Decisiones de diseño aplicadas en esta demo y su equivalente recomendado en producción.</p></div></div>
+    <div class="grid-2">
+      <div class="panel"><div class="panel-body">
+        <div class="sec-block"><h4>Identificador de la entrada</h4><p>Cada token se genera con <span class="mono">crypto.getRandomValues</span>, 24 bytes (192 bits). No es secuencial ni derivable a partir de otro token: adivinar uno por fuerza bruta es inviable. En producción, un UUIDv4 o un token aleatorio de igual entropía guardado en una columna indexada y única cumple el mismo propósito, sin necesidad de firmarlo si el backend siempre lo busca contra la base de datos.</p></div>
+        <div class="sec-block"><h4>Qué va dentro del QR</h4><p>Solo el token. Ningún nombre, correo o dato personal — así una entrada perdida o fotografiada no expone información del asistente, y el backend es quien resuelve identidad y estado.</p></div>
+        <div class="sec-block"><h4>Reutilización y manipulación</h4><p>El estado (DISPONIBLE / USADA) vive únicamente en el servidor. Si alguien edita o clona el QR, el token seguirá apuntando al mismo registro, así que un segundo uso se detecta igual.</p></div>
+        <div class="sec-block"><h4>Fuerza bruta contra el endpoint de validación</h4><p>Rate limiting por IP/dispositivo en <span class="mono">POST /tickets/validate</span>, y bloqueo temporal tras validaciones fallidas repetidas desde el mismo origen.</p></div>
+      </div></div>
+      <div class="panel"><div class="panel-body">
+        <div class="sec-block"><h4>Concurrencia (doble escaneo)</h4><p>Esta demo usa un bloqueo en memoria por entrada (pestaña "Concurrencia"). En una base de datos real, el equivalente es una actualización condicional atómica, por ejemplo: <span class="mono">UPDATE tickets SET status='USADA' WHERE id=$1 AND status='DISPONIBLE' RETURNING *</span>. Si no se actualiza ninguna fila, la entrada ya estaba usada.</p></div>
+        <div class="sec-block"><h4>Autenticación y roles</h4><p>JWT de vida corta + refresh token, con el rol (admin / validador) embebido y verificado en cada endpoint protegido. El validador nunca recibe permisos para crear o editar entradas, ni siquiera si conoce la URL del endpoint.</p></div>
+        <div class="sec-block"><h4>Auditoría</h4><p>Cada intento — válido, repetido o inválido — queda registrado con entrada, evento, resultado, usuario validador y momento exacto, visible en la pestaña "Auditoría".</p></div>
+        <div class="sec-block"><h4>Estado del sistema</h4><p>La información principal se guarda en SQLite mediante el servidor. Para uso público real se recomienda añadir autenticación con contraseña, HTTPS y copias de seguridad.</p></div>
+      </div></div>
+    </div>
+  `;
+}
+
+/* ---------- VALIDADOR ---------- */
+function renderValidador(){
+  const activeEvents = state.events.filter(e=>e.status==='activo');
+  app.innerHTML = `
+  <div class="shell ${state.sidebarCollapsed?'sidebar-collapsed':''}">
+    <div class="rail">
+      <div class="rail-brand"><div class="dot"></div><span>ACCESO</span></div>
+      <button class="rail-toggle" id="railToggle" title="Minimizar/expandir menú">${state.sidebarCollapsed?'☰':'‹'}</button>
+      <div class="nav-item active"><span class="ic">▣</span><span class="nav-label">Escáner</span></div>
+      <div class="rail-footer">
+        <div class="rail-user"><b>${escapeHtml(state.currentUser.name)}</b>Validador</div>
+        <button class="logout-btn" id="logoutBtn">Bloquear sistema</button>
+      </div>
+    </div>
+    <div class="main">
+      <div class="main-header">
+        <div><h2>Escáner de acceso</h2><p>Selecciona el evento autorizado y escanea las entradas conforme llegan los asistentes.</p></div>
+        <div class="field" style="min-width:260px;margin:0">
+          <select id="validatorEvPicker">
+            ${activeEvents.length===0 ? `<option>No hay eventos activos</option>` :
+              activeEvents.map(e=>`<option value="${e.id}" ${e.id===state.validatorEventId?'selected':''}>${escapeHtml(e.name)}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      ${activeEvents.length===0 ? `<div class="empty">Pídele al administrador que active un evento con entradas generadas.</div>` : renderScannerBody()}
+    </div>
+  </div>`;
+  app.querySelector('#logoutBtn').onclick = logout;
+  const railToggle=app.querySelector('#railToggle'); if(railToggle) railToggle.onclick=()=>{ state.sidebarCollapsed=!state.sidebarCollapsed; render(); };
+  const picker = app.querySelector('#validatorEvPicker');
+  if(picker) picker.onchange = ()=>{ state.validatorEventId = picker.value; state.scanResult=null; render(); };
+  if(activeEvents.length) wireScannerBody();
+}
+
+function renderScannerBody(){
+  const ev = state.events.find(e=>e.id===state.validatorEventId) || state.events.find(e=>e.status==='activo');
+  const evTickets = state.tickets.filter(t=>t.eventId===ev.id);
+  const disponibles = evTickets.filter(t=>t.status==='DISPONIBLE');
+
+  let stageHtml;
+  if(state.scanResult){
+    const r = state.scanResult;
+    if(r.result==='VALID' || r.result==='VALID_AFTER_PAYMENT'){
+      stageHtml = `<div class="result-overlay ok">
+        <div class="result-icon">🟢</div>
+        <div class="result-title ok">ENTRADA VÁLIDA</div>
+        <div class="result-sub">Registrada como usada · ${fmtDateTime(new Date())}</div>
+      </div>`;
+    } else if(r.result==='NOT_SOLD'){
+      stageHtml = `<div class="result-overlay bad"><div class="result-icon">⚠️</div><div class="result-title bad">ENTRADA NO VENDIDA</div><div class="result-sub">Esta entrada todavía no ha sido liberada para un comprador.</div></div>`;
+    } else if(r.result==='CANCELLED'){
+      stageHtml = `<div class="result-overlay bad"><div class="result-icon">🚫</div><div class="result-title bad">ENTRADA CANCELADA</div><div class="result-sub">Esta entrada no permite el ingreso.</div></div>`;
+    } else if(r.result==='PAYMENT_COMPLETE'){
+      stageHtml = `<div class="result-overlay ok"><div class="result-icon">🟢</div><div class="result-title ok">PAGO COMPLETO</div><div class="result-sub">La entrada está liberada. Aún falta validar el ingreso.</div><button class="btn primary" id="validateAfterPaymentBtn" style="margin-top:18px">Validar ingreso</button></div>`;
+    } else if(r.result==='PAYMENT_PENDING'){
+      stageHtml = `<div class="result-overlay used">
+        <div class="result-icon">💰</div>
+        <div class="result-title used">PAGO PENDIENTE</div>
+        <div class="result-sub">Debe cancelar <b>${money(r.balance)}</b> para poder ingresar.</div>
+        <button class="btn primary" id="payAtDoorBtn" style="margin-top:18px">Registrar pago ahora</button>
+      </div>`;
+    } else if(r.result==='USED'){
+      stageHtml = `<div class="result-overlay used">
+        <div class="result-icon">🟠</div>
+        <div class="result-title used">ENTRADA YA UTILIZADA</div>
+        <div class="result-sub">Primer uso: <span class="mono">${fmtDateTime(r.usedAt)}</span><br/>Validado por: ${escapeHtml(r.usedBy||'—')}</div>
+      </div>`;
+    } else {
+      stageHtml = `<div class="result-overlay bad">
+        <div class="result-icon">🔴</div>
+        <div class="result-title bad">ENTRADA NO VÁLIDA</div>
+        <div class="result-sub">${r.reason==='otro evento' ? 'Esta entrada pertenece a otro evento.' : 'El token no existe o fue alterado.'}</div>
+      </div>`;
+    }
+  } else {
+    stageHtml = `<div class="scan-idle">
+      <div class="scan-target">▣</div>
+      <div>Esperando escaneo…</div>
+    </div>`;
+  }
+
+  return `
+    <div class="scanner-wrap">
+      <div class="scan-panel panel">
+        <div class="field">
+          <label>Simular lectura de cámara — elegir entrada</label>
+          <select id="quickPick">
+            <option value="">— elegir de la lista —</option>
+            ${evTickets.map(t=>`<option value="${t.token}">${t.token.slice(0,16)}… (${t.status})</option>`).join('')}
+          </select>
+        </div>
+        <div class="field">
+          <label>O pegar/escribir un token manualmente</label>
+          <input id="manualToken" class="mono" placeholder="token de 48 caracteres…" />
+        </div>
+        <button class="btn primary" id="scanBtn" style="width:100%">Escanear</button><button class="btn" id="cameraBtn" style="width:100%;margin-top:8px">📷 Cámara</button><div id="cameraBox" style="display:none;margin-top:10px"><video id="cameraVideo" autoplay playsinline style="width:100%;border-radius:8px;background:#000"></video><button class="btn" id="stopCamera" style="width:100%;margin-top:6px">Detener cámara</button></div>
+        <div class="notice" style="margin-top:16px">${disponibles.length} de ${evTickets.length} entradas siguen disponibles para <b>&nbsp;${escapeHtml(ev.name)}</b>.</div>
+      </div>
+      <div class="scan-stage">${stageHtml}</div>
+    </div>
+    ${state.scanResult ? `<div style="margin-top:16px"><button class="btn primary" id="nextScanBtn">Escanear siguiente →</button></div>` : ''}
+  `;
+}
+
+function openDoorPayment(ticket){
+  const t=normalizeTicket(ticket); const overlay=document.createElement('div'); overlay.className='modal-overlay';
+  overlay.innerHTML=`<div class="ticket-card" style="width:360px"><div class="tc-head"><div class="ev">Pago en puerta</div><div class="meta">Entrada #${t.id}</div></div><div class="tc-body"><div style="font-size:18px;font-weight:700">Saldo pendiente: ${money(t.balance)}</div><div class="field" style="width:100%;margin-top:14px"><label>Monto a cobrar</label><input id="doorAmount" type="number" min="0" max="${t.balance.toFixed(2)}" step="0.01" value="${t.balance.toFixed(2)}"></div><button class="btn primary" id="doorPay" style="width:100%">Registrar pago</button></div><button class="tc-close" id="doorClose">Cancelar</button></div>`;
+  document.body.appendChild(overlay); overlay.querySelector('#doorClose').onclick=()=>overlay.remove(); overlay.querySelector('#doorPay').onclick=async()=>{try{const p=Number(overlay.querySelector('#doorAmount').value)||0;if(p<=0){alert('Ingresa un monto mayor que cero.');return;}const nt=await registerPayment(t.id,p);overlay.remove();state.scanResult={result:nt.balance<=0?'PAYMENT_COMPLETE':'PAYMENT_PENDING',ticket:nt,balance:nt.balance};render();}catch(e){alert(e.message)}};
+}
+
+function wireScannerBody(){
+  const quickPick = app.querySelector('#quickPick');
+  const manual = app.querySelector('#manualToken');
+  if(quickPick) quickPick.onchange = ()=>{ if(quickPick.value) manual.value = quickPick.value; };
+  if(manual){ manual.focus(); manual.onkeydown=e=>{ if(e.key==='Enter'){e.preventDefault();scanBtn.click();} }; }
+  const scanBtn = app.querySelector('#scanBtn');
+  if(scanBtn) scanBtn.onclick = async ()=>{
+    const token = (manual.value||'').trim();
+    if(!token) return;
+    const ev = state.events.find(e=>e.id===state.validatorEventId);
+    scanBtn.disabled = true;
+    try{ const res = await validateSafe(token, ev.id, state.currentUser.name); state.scanResult = res; render();
+      if(res.result==='PAYMENT_PENDING'){ const b=app.querySelector('#payAtDoorBtn'); if(b) b.onclick=()=>openDoorPayment(res.ticket); }
+      if(res.result==='PAYMENT_COMPLETE'){ const b=app.querySelector('#validateAfterPaymentBtn'); if(b) b.onclick=async()=>{ try{ state.scanResult=await validateSafe(res.ticket.token,state.validatorEventId,state.currentUser.name); render(); }catch(e){alert(e.message)} }; }
+    }catch(e){ alert(e.message); scanBtn.disabled=false; }
+  };
+  const cameraBtn=app.querySelector('#cameraBtn'); const cameraBox=app.querySelector('#cameraBox'); const video=app.querySelector('#cameraVideo'); let camStream=null,camTimer=null;
+  const stopCam=()=>{if(window.__validatorQr){window.__validatorQr.stop().catch(()=>{});window.__validatorQr=null}if(camTimer)cancelAnimationFrame(camTimer); if(camStream){camStream.getTracks().forEach(x=>x.stop());camStream=null;} if(video)video.srcObject=null; if(cameraBox)cameraBox.style.display='none'};
+  if(cameraBtn) cameraBtn.onclick=async()=>{ try{ if(!window.isSecureContext)throw new Error('La cámara requiere HTTPS o localhost.'); if('BarcodeDetector' in window){ const detector=new BarcodeDetector({formats:['qr_code']}); camStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}}}); video.srcObject=camStream; cameraBox.style.display='block'; const loop=async()=>{if(!camStream)return; try{const codes=await detector.detect(video); if(codes.length&&codes[0].rawValue){manual.value=codes[0].rawValue; stopCam(); scanBtn.click(); return;}}catch(e){} camTimer=requestAnimationFrame(loop)}; loop(); return; } if(window.Html5Qrcode){cameraBox.style.display='block';video.style.display='none';const reader=document.createElement('div');reader.id='validatorQrReader';reader.style.cssText='width:100%';cameraBox.insertBefore(reader,video);const qr=new Html5Qrcode('validatorQrReader');window.__validatorQr=qr;await qr.start({facingMode:'environment'},{fps:10,qrbox:{width:240,height:240}},text=>{manual.value=text;qr.stop().catch(()=>{});reader.remove();video.style.display='block';cameraBox.style.display='none';scanBtn.click()});return;} throw new Error('No hay lector QR disponible.'); }catch(e){alert('No se pudo abrir la cámara: '+e.message)} };
+  const stop=app.querySelector('#stopCamera'); if(stop)stop.onclick=stopCam;
+  const nextBtn = app.querySelector('#nextScanBtn');
+  if(nextBtn) nextBtn.onclick = ()=>{ state.scanResult=null; render(); };
+}
+
+/* =========================================================
+   DATOS DE EJEMPLO PARA EMPEZAR A PROBAR DE INMEDIATO
+   ========================================================= */
+async function boot(){
+  try{ await loadData(); render(); }catch(e){ app.innerHTML=`<div class="login-wrap"><div class="login-card"><h1>No se pudo conectar</h1><p class="sub">${escapeHtml(e.message)}<br><br>Verifica que el servidor Flask esté iniciado.</p><button class="btn-primary" onclick="location.reload()">Reintentar</button></div></div>`; }
+}
+boot();
+</script>
+</body>
+</html>

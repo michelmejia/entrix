@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Acceso — Demo de entradas digitales</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  :root{
+    --void:#0B0E14;
+    --panel:#131822;
+    --panel-raised:#1B2130;
+    --border:#262D3D;
+    --border-soft:#1E2434;
+    --text:#E8ECF4;
+    --text-muted:#8B93A7;
+    --text-faint:#5B637A;
+    --accent:#7C6FF0;
+    --accent-dim:#352C6E;
+    --accent-soft:rgba(124,111,240,0.14);
+    --green:#22C55E;
+    --green-soft:rgba(34,197,94,0.14);
+    --amber:#F5A524;
+    --amber-soft:rgba(245,165,36,0.14);
+    --red:#EF4444;
+    --red-soft:rgba(239,68,68,0.14);
+    --radius:8px;
+    --font-ui:'Space Grotesk', -apple-system, sans-serif;
+    --font-mono:'JetBrains Mono', 'Courier New', monospace;
+  }
+  @font-face{font-family:'Space Grotesk';src:local('Space Grotesk');}
+  * { box-sizing:border-box; }
+  html,body{ height:100%; }
+  body{
+    margin:0;
+    background:var(--void);
+    color:var(--text);
+    font-family:var(--font-ui);
+    -webkit-font-smoothing:antialiased;
+  }
+  #app{ min-height:100vh; display:flex; flex-direction:column; }
+
+  ::selection{ background:var(--accent-dim); }
+  a{ color:inherit; }
+  button{ font-family:inherit; cursor:pointer; }
+  input,select{ font-family:inherit; }
+
+  /* ---------- Login ---------- */
+  .login-wrap{
+    flex:1; display:flex; align-items:center; justify-content:center;
+    background:
+      radial-gradient(circle at 15% 20%, rgba(124,111,240,0.10), transparent 45%),
+      radial-gradient(circle at 85% 80%, rgba(34,197,94,0.06), transparent 40%),
+      var(--void);
+    padding:24px;
+  }
+  .login-card{ width:100%; max-width:400px; }
+  .brand-mark{
+    display:flex; align-items:center; gap:10px; margin-bottom:36px;
+  }
+  .brand-mark .dot{
+    width:10px;height:10px;border-radius:2px;background:var(--accent);
+    box-shadow:0 0 14px rgba(124,111,240,0.7);
+  }
+  .brand-mark span{ font-weight:600; font-size:15px; letter-spacing:0.02em; color:var(--text-muted); }
+  .login-card h1{
+    font-size:30px; font-weight:600; letter-spacing:-0.01em; margin:0 0 8px;
+    line-height:1.2;
+  }
+  .login-card p.sub{ color:var(--text-muted); font-size:14px; margin:0 0 32px; line-height:1.5; }
+  .role-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:20px; }
+  .role-btn{
+    background:var(--panel); border:1px solid var(--border); border-radius:var(--radius);
+    padding:18px 14px; text-align:left; color:var(--text); transition:border-color .15s, background .15s;
+  }
+  .role-btn:hover{ border-color:var(--accent); background:var(--panel-raised); }
+  .role-btn.active{ border-color:var(--accent); background:var(--accent-soft); }
+  .role-btn .role-title{ font-weight:600; font-size:14px; margin-bottom:4px; }
+  .role-btn .role-desc{ font-size:12px; color:var(--text-muted); line-height:1.4; }
+  .field{ margin-bottom:14px; }
+  .field label{ display:block; font-size:12px; color:var(--text-muted); margin-bottom:6px; }
+  .field input, .field select{
+    width:100%; background:var(--panel); border:1px solid var(--border); color:var(--text);
+    padding:11px 12px; border-radius:6px; font-size:14px; outline:none;
+  }
+  .field input:focus, .field select:focus{ border-color:var(--accent); }
+  .btn-primary{
+    width:100%; background:var(--accent); color:#fff; border:none; padding:12px 16px;
+    border-radius:6px; font-size:14px; font-weight:600; margin-top:6px;
+  }
+  .btn-primary:hover{ background:#8f83f5; }
+  .btn-primary:disabled{ background:var(--panel-raised); color:var(--text-faint); cursor:not-allowed; }
+  .login-hint{ margin-top:22px; font-size:12px; color:var(--text-faint); line-height:1.6; }
+
+  /* ---------- Shell ---------- */
+  .shell{ display:flex; flex:1; min-height:100vh; }
+  .rail{
+    width:208px; flex-shrink:0; background:var(--panel); border-right:1px solid var(--border);
+    display:flex; flex-direction:column; padding:18px 12px;
+  }
+  .rail-brand{ display:flex; align-items:center; gap:9px; padding:6px 8px 22px; }
+  .rail-brand .dot{ width:9px;height:9px;border-radius:2px;background:var(--accent); box-shadow:0 0 12px rgba(124,111,240,0.7); }
+  .rail-brand span{ font-weight:600; font-size:14px; }
+  .nav-item{
+    display:flex; align-items:center; gap:10px; padding:9px 10px; border-radius:6px;
+    color:var(--text-muted); font-size:13.5px; font-weight:500; margin-bottom:2px; border:none; background:none; width:100%; text-align:left;
+  }
+  .nav-item:hover{ background:var(--panel-raised); color:var(--text); }
+  .nav-item.active{ background:var(--accent-soft); color:var(--text); }
+  .nav-item .ic{ width:15px; text-align:center; opacity:0.85; }
+  .rail-footer{ margin-top:auto; padding:12px 10px 4px; border-top:1px solid var(--border-soft); }
+  .rail-user{ font-size:12.5px; color:var(--text-muted); margin-bottom:8px; }
+  .rail-user b{ color:var(--text); display:block; font-size:13px; }
+  .logout-btn{ background:none; border:1px solid var(--border); color:var(--text-muted); font-size:12px; padding:6px 10px; border-radius:6px; width:100%; }
+  .logout-btn:hover{ border-color:var(--red); color:var(--red); }
+
+  .main{ flex:1; padding:28px 34px; overflow-y:auto; max-height:100vh; }
+  .main-header{ display:flex; align-items:flex-end; justify-content:space-between; margin-bottom:22px; flex-wrap:wrap; gap:12px;}
+  .main-header h2{ font-size:20px; font-weight:600; margin:0 0 4px; letter-spacing:-0.01em; }
+  .main-header p{ margin:0; font-size:13px; color:var(--text-muted); }
+
+  /* ---------- Stat cards ---------- */
+  .stat-row{ display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:24px; }
+  .stat-card{ background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:16px 18px; }
+  .stat-card .label{ font-size:11.5px; color:var(--text-muted); margin-bottom:8px; }
+  .stat-card .value{ font-size:26px; font-weight:600; font-family:var(--font-mono); letter-spacing:-0.02em; }
+  .stat-card .value.green{ color:var(--green); }
+  .stat-card .value.amber{ color:var(--amber); }
+  .bar-track{ height:5px; background:var(--panel-raised); border-radius:3px; margin-top:10px; overflow:hidden; }
+  .bar-fill{ height:100%; background:var(--accent); border-radius:3px; transition:width .4s; }
+
+  /* ---------- Panels / tables ---------- */
+  .panel{ background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); margin-bottom:20px; }
+  .panel-head{ display:flex; align-items:center; justify-content:space-between; padding:14px 18px; border-bottom:1px solid var(--border-soft); }
+  .panel-head h3{ margin:0; font-size:14px; font-weight:600; }
+  .panel-body{ padding:16px 18px; }
+  table{ width:100%; border-collapse:collapse; font-size:13px; }
+  th{ text-align:left; color:var(--text-muted); font-weight:500; font-size:11.5px; padding:0 14px 10px; border-bottom:1px solid var(--border-soft); }
+  td{ padding:11px 14px; border-bottom:1px solid var(--border-soft); vertical-align:middle; }
+  tr:last-child td{ border-bottom:none; }
+  .mono{ font-family:var(--font-mono); font-size:12px; color:var(--text-muted); }
+  .badge{ display:inline-flex; align-items:center; gap:5px; padding:3px 9px; border-radius:20px; font-size:11px; font-weight:600; }
+  .badge.disponible{ background:var(--accent-soft); color:var(--accent); }
+  .badge.usada{ background:var(--amber-soft); color:var(--amber); }
+  .badge.activo{ background:var(--green-soft); color:var(--green); }
+  .badge.inactivo{ background:rgba(139,147,167,0.14); color:var(--text-muted); }
+  .badge.valid{ background:var(--green-soft); color:var(--green); }
+  .badge.used{ background:var(--amber-soft); color:var(--amber); }
+  .badge.invalid{ background:var(--red-soft); color:var(--red); }
+  .link-btn{ background:none; border:none; color:var(--accent); font-size:12.5px; font-weight:600; padding:0; }
+  .link-btn:hover{ text-decoration:underline; }
+  .btn{ background:var(--panel-raised); border:1px solid var(--border); color:var(--text); padding:8px 14px; border-radius:6px; font-size:13px; font-weight:500; }
+  .btn:hover{ border-color:var(--accent); }
+  .btn.primary{ background:var(--accent); border-color:var(--accent); color:#fff; }
+  .btn.primary:hover{ background:#8f83f5; }
+  .btn:disabled{ opacity:0.4; cursor:not-allowed; }
+  .empty{ text-align:center; padding:40px 20px; color:var(--text-faint); font-size:13px; }
+
+  .grid-2{ display:grid; grid-template-columns:1.1fr 1.4fr; gap:20px; align-items:start; }
+  @media (max-width:1000px){ .grid-2{ grid-template-columns:1fr; } .stat-row{ grid-template-columns:1fr 1fr; } }
+
+  /* form */
+  .form-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .form-grid .full{ grid-column:1/-1; }
+
+  /* modal */
+  .modal-overlay{
+    position:fixed; inset:0; background:rgba(6,8,12,0.72); display:flex; align-items:center; justify-content:center;
+    z-index:50; padding:20px;
+  }
+  .ticket-card{
+    background:#fff; color:#0B0E14; border-radius:14px; width:320px; overflow:hidden;
+    font-family:var(--font-ui);
+  }
+  .ticket-card .tc-head{ background:var(--accent); color:#fff; padding:16px 18px; }
+  .ticket-card .tc-head .ev{ font-weight:700; font-size:15px; }
+  .ticket-card .tc-head .meta{ font-size:12px; opacity:0.9; margin-top:2px; }
+  .ticket-card .tc-body{ padding:20px; display:flex; flex-direction:column; align-items:center; }
+  .qr-box{ background:#fff; padding:8px; border:1px solid #eee; border-radius:8px; }
+  .ticket-card .tc-token{ font-family:var(--font-mono); font-size:10.5px; color:#666; margin-top:14px; word-break:break-all; text-align:center; }
+  .ticket-card .tc-status{ margin-top:10px; }
+  .ticket-card .tc-close{ display:block; width:100%; text-align:center; padding:12px; border-top:1px solid #eee; background:#fafafa; color:#555; font-size:13px; font-weight:600; border:none; }
+
+  /* ---------- Scanner ---------- */
+  .scanner-wrap{ display:grid; grid-template-columns:340px 1fr; gap:20px; align-items:start; }
+  @media (max-width:900px){ .scanner-wrap{ grid-template-columns:1fr; } }
+  .scan-stage{
+    position:relative; min-height:420px; background:var(--panel); border:1px solid var(--border);
+    border-radius:var(--radius); display:flex; align-items:center; justify-content:center; overflow:hidden;
+  }
+  .scan-idle{ text-align:center; color:var(--text-faint); padding:30px; }
+  .scan-target{
+    width:150px; height:150px; border:2px dashed var(--border); border-radius:14px; margin:0 auto 18px;
+    display:flex; align-items:center; justify-content:center; font-size:34px; color:var(--text-faint);
+  }
+  .result-overlay{
+    position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    text-align:center; padding:30px; animation:pop .18s ease-out;
+  }
+  @keyframes pop{ from{ opacity:0; transform:scale(0.97);} to{opacity:1; transform:scale(1);} }
+  .result-overlay.ok{ background:linear-gradient(180deg, rgba(34,197,94,0.22), rgba(34,197,94,0.08)); }
+  .result-overlay.used{ background:linear-gradient(180deg, rgba(245,165,36,0.22), rgba(245,165,36,0.08)); }
+  .result-overlay.bad{ background:linear-gradient(180deg, rgba(239,68,68,0.22), rgba(239,68,68,0.08)); }
+  .result-icon{ font-size:56px; margin-bottom:14px; }
+  .result-title{ font-size:24px; font-weight:700; letter-spacing:-0.01em; margin-bottom:6px; }
+  .result-title.ok{ color:var(--green); }
+  .result-title.used{ color:var(--amber); }
+  .result-title.bad{ color:var(--red); }
+  .result-sub{ font-size:13px; color:var(--text-muted); line-height:1.6; }
+  .result-sub .mono{ color:var(--text); }
+  .scan-panel{ padding:18px; }
+  .scan-panel .field{ margin-bottom:12px; }
+
+  .notice{
+    display:flex; gap:10px; padding:11px 14px; border-radius:6px; font-size:12.5px; line-height:1.5;
+    background:var(--accent-soft); color:var(--text); border:1px solid var(--accent-dim); margin-bottom:16px;
+  }
+  .notice.warn{ background:var(--red-soft); border-color:rgba(239,68,68,0.35); }
+
+  /* concurrency demo */
+  .duel{ display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:16px; }
+  .duel-card{ background:var(--panel-raised); border:1px solid var(--border); border-radius:8px; padding:14px; }
+  .duel-card .duel-label{ font-size:11.5px; color:var(--text-muted); margin-bottom:8px; }
+  .duel-card .duel-result{ font-size:16px; font-weight:700; }
+  .duel-card .duel-result.ok{ color:var(--green); }
+  .duel-card .duel-result.used{ color:var(--amber); }
+  .duel-card .duel-time{ font-size:11px; color:var(--text-faint); margin-top:6px; font-family:var(--font-mono); }
+  .verdict{ margin-top:14px; padding:12px 14px; border-radius:8px; font-size:13px; font-weight:600; }
+  .verdict.pass{ background:var(--green-soft); color:var(--green); }
+  .verdict.fail{ background:var(--red-soft); color:var(--red); }
+  .toggle-row{ display:flex; align-items:center; gap:10px; margin:14px 0; }
+  .switch{ position:relative; width:40px; height:22px; background:var(--panel-raised); border:1px solid var(--border); border-radius:20px; }
+  .switch.on{ background:var(--accent-dim); border-color:var(--accent); }
+  .switch .knob{ position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%; background:var(--text-muted); transition:left .15s; }
+  .switch.on .knob{ left:20px; background:var(--accent); }
+
+  .code-note{ background:var(--panel-raised); border:1px solid var(--border-soft); border-radius:6px; padding:12px 14px; font-family:var(--font-mono); font-size:11.5px; color:var(--text-muted); line-height:1.7; white-space:pre-wrap; }
+
+  .sec-block{ margin-bottom:18px; }
+  .sec-block h4{ font-size:13.5px; margin:0 0 6px; color:var(--text); }
+  .sec-block p{ font-size:13px; color:var(--text-muted); line-height:1.65; margin:0; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+/* =========================================================
+   ESTADO EN MEMORIA (demo — sin persistencia ni backend real)
+   ========================================================= */
+const state = {
+  view: 'login',          // login | admin | validador
+  adminTab: 'eventos',    // eventos | entradas | escaner | concurrencia | auditoria | seguridad
+  currentUser: null,      // {role, name}
+  events: [],
+  tickets: [],
+  validations: [],
+  selectedEventId: null,     // admin: evento gestionado en "Entradas"
+  validatorEventId: null,    // validador: evento seleccionado para escanear
+  scanResult: null,          // resultado mostrado en el escáner principal
+  concTicketId: null,
+  concProtected: true,
+  concResults: null,
+  modalTicketId: null,
+  _idSeq: 1,
+};
+
+function uid(prefix){ return prefix + '_' + (state._idSeq++); }
+
+function generateToken(){
+  const arr = new Uint8Array(24); // 192 bits de entropía
+  crypto.getRandomValues(arr);
+  return Array.from(arr, b => b.toString(16).padStart(2,'0')).join('');
+}
+
+function fmtDateTime(d){
+  if(!d) return '—';
+  const dt = new Date(d);
+  return dt.toLocaleDateString('es-PE',{day:'2-digit',month:'2-digit'}) + ' ' + dt.toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+
+/* ---------- Bloqueo por-entrada (simula transacción atómica) ---------- */
+const locks = new Map();
+function withLock(key, fn){
+  const prev = locks.get(key) || Promise.resolve();
+  const run = prev.then(fn, fn);
+  locks.set(key, run.catch(()=>{}));
+  return run;
+}
+
+/* =========================================================
+   LÓGICA DE NEGOCIO
+   ========================================================= */
+function createEvent({name,date,time,location,capacity}){
+  const ev = { id: uid('ev'), name, date, time, location, capacity: Number(capacity), status:'activo', createdAt:new Date() };
+  state.events.push(ev);
+  state.selectedEventId = ev.id;
+  return ev;
+}
+
+function toggleEventStatus(id){
+  const ev = state.events.find(e=>e.id===id);
+  ev.status = ev.status === 'activo' ? 'inactivo' : 'activo';
+}
+
+function generateTickets(eventId, qty){
+  const created = [];
+  for(let i=0;i<qty;i++){
+    const t = { id: uid('tk'), eventId, token: generateToken(), status:'DISPONIBLE', createdAt:new Date(), usedAt:null, usedBy:null };
+    state.tickets.push(t);
+    created.push(t);
+  }
+  return created;
+}
+
+function logValidation(ticket, eventId, userName, result){
+  state.validations.unshift({
+    id: uid('val'), ticketId: ticket ? ticket.id : null, eventId,
+    userName, result, date: new Date()
+  });
+}
+
+// Validación "segura": todo el ciclo lectura-decisión-escritura ocurre dentro del lock.
+async function validateSafe(token, eventId, userName){
+  const ticket = state.tickets.find(t=>t.token===token);
+  if(!ticket){ logValidation(null, eventId, userName, 'INVALID'); return {result:'INVALID'}; }
+  if(ticket.eventId !== eventId){ logValidation(ticket, eventId, userName, 'INVALID'); return {result:'INVALID', reason:'otro evento'}; }
+
+  return withLock(ticket.id, async () => {
+    if(ticket.status === 'USADA'){
+      logValidation(ticket, eventId, userName, 'USED');
+      return {result:'USED', usedAt:ticket.usedAt, usedBy:ticket.usedBy};
+    }
+    await sleep(150); // trabajo simulado (equivalente a una escritura en BD)
+    ticket.status = 'USADA';
+    ticket.usedAt = new Date();
+    ticket.usedBy = userName;
+    logValidation(ticket, eventId, userName, 'VALID');
+    return {result:'VALID'};
+  });
+}
+
+// Validación "insegura": lee el estado, espera, y luego decide — sin bloqueo.
+// Reproduce a propósito la condición de carrera (TOCTOU) para fines didácticos.
+async function validateUnsafe(ticket, userName){
+  const wasUsed = ticket.status === 'USADA';
+  await sleep(150);
+  if(wasUsed){
+    return {result:'USED', usedAt:ticket.usedAt, usedBy:ticket.usedBy};
+  }
+  ticket.status = 'USADA';
+  ticket.usedAt = new Date();
+  ticket.usedBy = userName;
+  return {result:'VALID'};
+}
+
+/* =========================================================
+   RENDER
+   ========================================================= */
+const app = document.getElementById('app');
+function render(){
+  if(state.view === 'login') return renderLogin();
+  if(state.view === 'admin') return renderAdmin();
+  if(state.view === 'validador') return renderValidador();
+}
+
+/* ---------- LOGIN ---------- */
+let pendingRole = 'admin';
+function renderLogin(){
+  app.innerHTML = `
+  <div class="login-wrap">
+    <div class="login-card">
+      <div class="brand-mark"><div class="dot"></div><span>ACCESO — demo</span></div>
+      <h1>Entrar al sistema</h1>
+      <p class="sub">Elige un rol para simular la sesión. No requiere contraseña real: es una demostración funcional en el navegador.</p>
+      <div class="role-grid">
+        <button class="role-btn ${pendingRole==='admin'?'active':''}" data-role="admin">
+          <div class="role-title">Administrador</div>
+          <div class="role-desc">Crea eventos, genera entradas, ve estadísticas.</div>
+        </button>
+        <button class="role-btn ${pendingRole==='validador'?'active':''}" data-role="validador">
+          <div class="role-title">Validador</div>
+          <div class="role-desc">Escanea entradas en el punto de acceso.</div>
+        </button>
+      </div>
+      <div class="field">
+        <label>Nombre</label>
+        <input id="loginName" type="text" placeholder="${pendingRole==='admin'?'ej. Marta Ríos':'ej. Puerta 2 — Diego'}" />
+      </div>
+      <button class="btn-primary" id="loginBtn">Continuar</button>
+      <div class="login-hint">Los tokens de entrada se generan con <span class="mono">crypto.getRandomValues</span> (192 bits) — no son incrementales ni predecibles.</div>
+    </div>
+  </div>`;
+
+  app.querySelectorAll('.role-btn').forEach(b=>b.onclick = ()=>{ pendingRole = b.dataset.role; renderLogin(); });
+  app.querySelector('#loginBtn').onclick = ()=>{
+    const name = app.querySelector('#loginName').value.trim() || (pendingRole==='admin' ? 'Administrador' : 'Validador');
+    state.currentUser = { role: pendingRole, name };
+    if(pendingRole==='admin'){
+      state.view='admin'; state.adminTab='eventos';
+    } else {
+      state.view='validador';
+      if(!state.validatorEventId){
+        const firstActive = state.events.find(e=>e.status==='activo');
+        state.validatorEventId = firstActive ? firstActive.id : null;
+      }
+    }
+    render();
+  };
+}
+
+function logout(){
+  state.currentUser = null; state.view='login'; state.scanResult=null; render();
+}
+
+/* ---------- ADMIN SHELL ---------- */
+function renderAdmin(){
+  const navItems = [
+    ['eventos','Eventos','◧'],
+    ['entradas','Entradas','▤'],
+    ['auditoria','Auditoría','≡'],
+    ['concurrencia','Concurrencia','⇄'],
+    ['seguridad','Seguridad','⛨'],
+  ];
+  app.innerHTML = `
+  <div class="shell">
+    <div class="rail">
+      <div class="rail-brand"><div class="dot"></div><span>ACCESO</span></div>
+      ${navItems.map(([key,label,ic])=>`
+        <button class="nav-item ${state.adminTab===key?'active':''}" data-tab="${key}">
+          <span class="ic">${ic}</span>${label}
+        </button>`).join('')}
+      <div class="rail-footer">
+        <div class="rail-user"><b>${escapeHtml(state.currentUser.name)}</b>Administrador</div>
+        <button class="logout-btn" id="logoutBtn">Cerrar sesión</button>
+      </div>
+    </div>
+    <div class="main" id="mainArea"></div>
+  </div>`;
+  app.querySelectorAll('.nav-item').forEach(b=>b.onclick=()=>{ state.adminTab=b.dataset.tab; render(); });
+  app.querySelector('#logoutBtn').onclick = logout;
+
+  const main = app.querySelector('#mainArea');
+  if(state.adminTab==='eventos') return renderTabEventos(main);
+  if(state.adminTab==='entradas') return renderTabEntradas(main);
+  if(state.adminTab==='auditoria') return renderTabAuditoria(main);
+  if(state.adminTab==='concurrencia') return renderTabConcurrencia(main);
+  if(state.adminTab==='seguridad') return renderTabSeguridad(main);
+}
+
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* ---------- TAB: EVENTOS ---------- */
+function renderTabEventos(main){
+  const totalTickets = state.tickets.length;
+  const usedTickets = state.tickets.filter(t=>t.status==='USADA').length;
+  const pct = totalTickets ? Math.round(usedTickets/totalTickets*100) : 0;
+
+  main.innerHTML = `
+    <div class="main-header">
+      <div><h2>Eventos</h2><p>Crea eventos y consulta el estado general de las entradas.</p></div>
+    </div>
+    <div class="stat-row">
+      <div class="stat-card"><div class="label">Eventos</div><div class="value">${state.events.length}</div></div>
+      <div class="stat-card"><div class="label">Entradas totales</div><div class="value">${totalTickets}</div></div>
+      <div class="stat-card"><div class="label">Utilizadas</div><div class="value amber">${usedTickets}</div></div>
+      <div class="stat-card"><div class="label">Asistencia</div><div class="value green">${pct}%</div>
+        <div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="panel">
+        <div class="panel-head"><h3>Nuevo evento</h3></div>
+        <div class="panel-body">
+          <div class="form-grid">
+            <div class="field full"><label>Nombre</label><input id="evName" placeholder="Conferencia Anual 2026" /></div>
+            <div class="field"><label>Fecha</label><input id="evDate" type="date" /></div>
+            <div class="field"><label>Hora</label><input id="evTime" type="time" /></div>
+            <div class="field full"><label>Ubicación</label><input id="evLoc" placeholder="Centro de Convenciones, Lima" /></div>
+            <div class="field full"><label>Cantidad de entradas a generar</label><input id="evQty" type="number" min="1" value="20" /></div>
+          </div>
+          <button class="btn primary" id="createEvBtn" style="margin-top:6px;width:100%">Crear evento y generar entradas</button>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h3>Eventos creados</h3></div>
+        <div class="panel-body" style="padding:0">
+          ${state.events.length===0 ? `<div class="empty">Aún no hay eventos. Crea el primero a la izquierda.</div>` : `
+          <table>
+            <thead><tr><th>Evento</th><th>Fecha</th><th>Entradas</th><th>Estado</th><th></th></tr></thead>
+            <tbody>
+              ${state.events.map(ev=>{
+                const n = state.tickets.filter(t=>t.eventId===ev.id).length;
+                return `<tr>
+                  <td><b>${escapeHtml(ev.name)}</b><div class="mono" style="margin-top:2px">${escapeHtml(ev.location)}</div></td>
+                  <td class="mono">${ev.date||'—'} ${ev.time||''}</td>
+                  <td>${n}</td>
+                  <td><span class="badge ${ev.status}">${ev.status}</span></td>
+                  <td style="text-align:right">
+                    <button class="link-btn" data-manage="${ev.id}">Gestionar entradas</button>
+                  </td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>`}
+        </div>
+      </div>
+    </div>
+  `;
+
+  main.querySelector('#createEvBtn').onclick = ()=>{
+    const name = main.querySelector('#evName').value.trim();
+    if(!name){ main.querySelector('#evName').focus(); return; }
+    const date = main.querySelector('#evDate').value;
+    const time = main.querySelector('#evTime').value;
+    const location = main.querySelector('#evLoc').value.trim() || 'Por confirmar';
+    const qty = Math.max(1, Number(main.querySelector('#evQty').value)||1);
+    const ev = createEvent({name,date,time,location,capacity:qty});
+    generateTickets(ev.id, qty);
+    state.adminTab='entradas';
+    render();
+  };
+  main.querySelectorAll('[data-manage]').forEach(b=>b.onclick=()=>{
+    state.selectedEventId = b.dataset.manage; state.adminTab='entradas'; render();
+  });
+}
+
+/* ---------- TAB: ENTRADAS ---------- */
+function renderTabEntradas(main){
+  if(!state.selectedEventId && state.events.length) state.selectedEventId = state.events[0].id;
+  const ev = state.events.find(e=>e.id===state.selectedEventId);
+
+  main.innerHTML = `
+    <div class="main-header">
+      <div><h2>Entradas</h2><p>Genera entradas, revisa su estado y visualiza el código QR de cada una.</p></div>
+      <div class="field" style="min-width:240px;margin:0">
+        <select id="evPicker">
+          ${state.events.length===0 ? `<option>No hay eventos</option>` : state.events.map(e=>`<option value="${e.id}" ${e.id===state.selectedEventId?'selected':''}>${escapeHtml(e.name)}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    ${!ev ? `<div class="empty">Crea un evento primero, en la pestaña Eventos.</div>` : renderEntradasBody(ev)}
+  `;
+  const picker = main.querySelector('#evPicker');
+  if(picker) picker.onchange = ()=>{ state.selectedEventId = picker.value; render(); };
+  if(ev) wireEntradasBody(main, ev);
+}
+
+function renderEntradasBody(ev){
+  const tks = state.tickets.filter(t=>t.eventId===ev.id);
+  const used = tks.filter(t=>t.status==='USADA').length;
+  return `
+    <div class="stat-row">
+      <div class="stat-card"><div class="label">Evento</div><div class="value" style="font-size:15px;font-family:var(--font-ui)">${escapeHtml(ev.name)}</div></div>
+      <div class="stat-card"><div class="label">Total entradas</div><div class="value">${tks.length}</div></div>
+      <div class="stat-card"><div class="label">Disponibles</div><div class="value">${tks.length-used}</div></div>
+      <div class="stat-card"><div class="label">Utilizadas</div><div class="value amber">${used}</div></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head">
+        <h3>Generar más entradas</h3>
+        <button class="btn" id="toggleActive">${ev.status==='activo' ? 'Desactivar evento' : 'Activar evento'}</button>
+      </div>
+      <div class="panel-body" style="display:flex;gap:10px;align-items:flex-end">
+        <div class="field" style="margin:0"><label>Cantidad</label><input id="addQty" type="number" min="1" value="10" style="width:120px" /></div>
+        <button class="btn primary" id="addTicketsBtn">Generar entradas</button>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h3>Listado de entradas</h3></div>
+      <div class="panel-body" style="padding:0;max-height:420px;overflow:auto">
+        ${tks.length===0 ? `<div class="empty">Sin entradas todavía.</div>` : `
+        <table>
+          <thead><tr><th>Token</th><th>Estado</th><th>Creada</th><th>Usada</th><th>Por</th><th></th></tr></thead>
+          <tbody>
+            ${tks.map(t=>`
+              <tr>
+                <td class="mono">${t.token.slice(0,14)}…</td>
+                <td><span class="badge ${t.status==='USADA'?'usada':'disponible'}">${t.status}</span></td>
+                <td class="mono">${fmtDateTime(t.createdAt)}</td>
+                <td class="mono">${fmtDateTime(t.usedAt)}</td>
+                <td>${t.usedBy||'—'}</td>
+                <td style="text-align:right"><button class="link-btn" data-qr="${t.id}">Ver QR</button></td>
+              </tr>`).join('')}
+          </tbody>
+        </table>`}
+      </div>
+    </div>
+  `;
+}
+
+function wireEntradasBody(main, ev){
+  const toggle = main.querySelector('#toggleActive');
+  if(toggle) toggle.onclick = ()=>{ toggleEventStatus(ev.id); render(); };
+  const addBtn = main.querySelector('#addTicketsBtn');
+  if(addBtn) addBtn.onclick = ()=>{
+    const qty = Math.max(1, Number(main.querySelector('#addQty').value)||1);
+    generateTickets(ev.id, qty);
+    render();
+  };
+  main.querySelectorAll('[data-qr]').forEach(b=>b.onclick=()=>{
+    state.modalTicketId = b.dataset.qr; render(); openTicketModal();
+  });
+}
+
+/* ---------- Modal de entrada (QR) ---------- */
+function openTicketModal(){
+  const t = state.tickets.find(x=>x.id===state.modalTicketId);
+  if(!t) return;
+  const ev = state.events.find(e=>e.id===t.eventId);
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="ticket-card">
+      <div class="tc-head">
+        <div class="ev">${escapeHtml(ev.name)}</div>
+        <div class="meta">${ev.date||'Fecha por confirmar'} · ${ev.time||''} · ${escapeHtml(ev.location)}</div>
+      </div>
+      <div class="tc-body">
+        <div class="qr-box" id="qrHolder"></div>
+        <div class="tc-token">ID: ${t.id}</div>
+        <div class="tc-status"><span class="badge ${t.status==='USADA'?'usada':'disponible'}">${t.status}</span></div>
+      </div>
+      <button class="tc-close" id="closeModal">Cerrar</button>
+    </div>`;
+  document.body.appendChild(overlay);
+  const holder = overlay.querySelector('#qrHolder');
+  try{
+    new QRCode(holder, { text: t.token, width:150, height:150, colorDark:'#0B0E14', colorLight:'#ffffff' });
+  }catch(e){
+    holder.innerHTML = `<div style="width:150px;height:150px;display:flex;align-items:center;justify-content:center;font-size:11px;color:#999;text-align:center;padding:8px;font-family:monospace">${t.token}</div>`;
+  }
+  overlay.querySelector('#closeModal').onclick = ()=>{ overlay.remove(); state.modalTicketId=null; };
+  overlay.onclick = (e)=>{ if(e.target===overlay){ overlay.remove(); state.modalTicketId=null; } };
+}
+
+/* ---------- TAB: AUDITORÍA ---------- */
+function renderTabAuditoria(main){
+  main.innerHTML = `
+    <div class="main-header"><div><h2>Auditoría</h2><p>Historial de todos los intentos de validación, exitosos o no.</p></div></div>
+    <div class="panel">
+      <div class="panel-body" style="padding:0;max-height:560px;overflow:auto">
+        ${state.validations.length===0 ? `<div class="empty">Todavía no se registraron validaciones. Ve a la vista de Validador para escanear entradas.</div>` : `
+        <table>
+          <thead><tr><th>Fecha/Hora</th><th>Entrada</th><th>Evento</th><th>Validador</th><th>Resultado</th></tr></thead>
+          <tbody>
+            ${state.validations.map(v=>{
+              const ev = state.events.find(e=>e.id===v.eventId);
+              const badgeClass = v.result==='VALID'?'valid':(v.result==='USED'?'used':'invalid');
+              const label = v.result==='VALID'?'VÁLIDA':(v.result==='USED'?'YA UTILIZADA':'NO VÁLIDA');
+              return `<tr>
+                <td class="mono">${fmtDateTime(v.date)}</td>
+                <td class="mono">${v.ticketId ? v.ticketId : '—'}</td>
+                <td>${ev ? escapeHtml(ev.name) : '—'}</td>
+                <td>${escapeHtml(v.userName)}</td>
+                <td><span class="badge ${badgeClass}">${label}</span></td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>`}
+      </div>
+    </div>
+  `;
+}
+
+/* ---------- TAB: CONCURRENCIA (demo del doble escaneo) ---------- */
+function renderTabConcurrencia(main){
+  const available = state.tickets.filter(t=>t.status==='DISPONIBLE');
+  if(!state.concTicketId && available.length) state.concTicketId = available[0].id;
+
+  main.innerHTML = `
+    <div class="main-header"><div><h2>Doble escaneo simultáneo</h2><p>Reproduce, en el navegador, el escenario crítico de la sección 5: dos validaciones para la misma entrada casi al mismo tiempo.</p></div></div>
+    <div class="notice">Elige una entrada disponible y dispara dos validaciones concurrentes. Con la protección activada, solo una puede marcar la entrada como usada — la operación es atómica por entrada (equivalente a una transacción con bloqueo en la base de datos real).</div>
+    <div class="panel">
+      <div class="panel-body">
+        <div class="form-grid">
+          <div class="field full">
+            <label>Entrada a probar</label>
+            <select id="concPicker">
+              ${available.length===0 ? `<option>No hay entradas disponibles — genera alguna primero</option>` :
+                available.map(t=>`<option value="${t.id}" ${t.id===state.concTicketId?'selected':''}>${t.token.slice(0,18)}… — ${state.events.find(e=>e.id===t.eventId)?.name||''}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div class="toggle-row">
+          <button id="concToggle" class="switch ${state.concProtected?'on':''}"><div class="knob"></div></button>
+          <div>
+            <div style="font-size:13px;font-weight:600">${state.concProtected ? 'Con protección (bloqueo atómico)' : 'Sin protección (condición de carrera)'}</div>
+            <div style="font-size:12px;color:var(--text-muted)">${state.concProtected ? 'validateSafe(): lectura + escritura dentro de un lock por entrada' : 'validateUnsafe(): lee, espera, y recién entonces decide — vulnerable'}</div>
+          </div>
+        </div>
+        <button class="btn primary" id="runDuel" ${available.length===0?'disabled':''}>Simular escaneo doble simultáneo</button>
+        <div id="duelArea"></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h3>Por qué ocurre el problema</h3></div>
+      <div class="panel-body code-note">// Sin protección — dos peticiones concurrentes:
+1) Escaneo A lee estado → DISPONIBLE
+2) Escaneo B lee estado → DISPONIBLE   (antes de que A escriba)
+3) Escaneo A escribe → USADA
+4) Escaneo B escribe → USADA           ← BUG: ambas dieron "válida"
+
+// Con protección — bloqueo por entrada (o UPDATE ... WHERE status='DISPONIBLE' en SQL real):
+1) Escaneo A adquiere el lock, lee DISPONIBLE, escribe USADA, libera
+2) Escaneo B espera el lock, luego lee USADA → responde "ya utilizada"</div>
+    </div>
+  `;
+
+  const picker = main.querySelector('#concPicker');
+  if(picker) picker.onchange = ()=>{ state.concTicketId = picker.value; state.concResults=null; render(); };
+  const toggle = main.querySelector('#concToggle');
+  toggle.onclick = ()=>{ state.concProtected = !state.concProtected; state.concResults=null; render(); };
+  const runBtn = main.querySelector('#runDuel');
+  runBtn.onclick = ()=> runConcurrencyDuel(main);
+
+  if(state.concResults) renderDuelResults(main.querySelector('#duelArea'));
+}
+
+async function runConcurrencyDuel(main){
+  const ticket = state.tickets.find(t=>t.id===state.concTicketId);
+  if(!ticket) return;
+  const ev = state.events.find(e=>e.id===ticket.eventId);
+  main.querySelector('#runDuel').disabled = true;
+  main.querySelector('#duelArea').innerHTML = `<div class="empty">Ejecutando dos validaciones en paralelo…</div>`;
+
+  const t0 = performance.now();
+  let resA, resB;
+  if(state.concProtected){
+    [resA, resB] = await Promise.all([
+      validateSafe(ticket.token, ev.id, 'Validador — Puerta A'),
+      validateSafe(ticket.token, ev.id, 'Validador — Puerta B'),
+    ]);
+  } else {
+    [resA, resB] = await Promise.all([
+      validateUnsafe(ticket, 'Validador — Puerta A'),
+      validateUnsafe(ticket, 'Validador — Puerta B'),
+    ]);
+  }
+  const dt = Math.round(performance.now()-t0);
+
+  const bothValid = resA.result==='VALID' && resB.result==='VALID';
+  state.concResults = { resA, resB, dt, bothValid, protectedMode: state.concProtected };
+  render();
+}
+
+function renderDuelResults(el){
+  if(!el) return;
+  const {resA, resB, dt, bothValid, protectedMode} = state.concResults;
+  const cardHtml = (label, r) => `
+    <div class="duel-card">
+      <div class="duel-label">${label}</div>
+      <div class="duel-result ${r.result==='VALID'?'ok':'used'}">${r.result==='VALID'?'✓ ENTRADA VÁLIDA':'⚠ YA UTILIZADA'}</div>
+      <div class="duel-time">respondió en ~${dt}ms</div>
+    </div>`;
+  el.innerHTML = `
+    <div class="duel">
+      ${cardHtml('Escaneo A (Puerta A)', resA)}
+      ${cardHtml('Escaneo B (Puerta B)', resB)}
+    </div>
+    <div class="verdict ${bothValid ? 'fail' : 'pass'}">
+      ${bothValid
+        ? '✕ Falló: ambas puertas aceptaron la misma entrada como válida. Esto es exactamente lo que el sistema real no debe permitir.'
+        : '✓ Correcto: solo una de las dos validaciones marcó la entrada como usada; la otra recibió "ya utilizada".'}
+      ${!protectedMode && !bothValid ? ' (con la latencia usada en esta demo, a veces el modo sin protección también acierta por casualidad — vuelve a intentarlo varias veces para ver el bug de forma consistente).' : ''}
+    </div>
+  `;
+}
+
+/* ---------- TAB: SEGURIDAD (notas técnicas) ---------- */
+function renderTabSeguridad(main){
+  main.innerHTML = `
+    <div class="main-header"><div><h2>Seguridad</h2><p>Decisiones de diseño aplicadas en esta demo y su equivalente recomendado en producción.</p></div></div>
+    <div class="grid-2">
+      <div class="panel"><div class="panel-body">
+        <div class="sec-block"><h4>Identificador de la entrada</h4><p>Cada token se genera con <span class="mono">crypto.getRandomValues</span>, 24 bytes (192 bits). No es secuencial ni derivable a partir de otro token: adivinar uno por fuerza bruta es inviable. En producción, un UUIDv4 o un token aleatorio de igual entropía guardado en una columna indexada y única cumple el mismo propósito, sin necesidad de firmarlo si el backend siempre lo busca contra la base de datos.</p></div>
+        <div class="sec-block"><h4>Qué va dentro del QR</h4><p>Solo el token. Ningún nombre, correo o dato personal — así una entrada perdida o fotografiada no expone información del asistente, y el backend es quien resuelve identidad y estado.</p></div>
+        <div class="sec-block"><h4>Reutilización y manipulación</h4><p>El estado (DISPONIBLE / USADA) vive únicamente en el servidor. Si alguien edita o clona el QR, el token seguirá apuntando al mismo registro, así que un segundo uso se detecta igual.</p></div>
+        <div class="sec-block"><h4>Fuerza bruta contra el endpoint de validación</h4><p>Rate limiting por IP/dispositivo en <span class="mono">POST /tickets/validate</span>, y bloqueo temporal tras validaciones fallidas repetidas desde el mismo origen.</p></div>
+      </div></div>
+      <div class="panel"><div class="panel-body">
+        <div class="sec-block"><h4>Concurrencia (doble escaneo)</h4><p>Esta demo usa un bloqueo en memoria por entrada (pestaña "Concurrencia"). En una base de datos real, el equivalente es una actualización condicional atómica, por ejemplo: <span class="mono">UPDATE tickets SET status='USADA' WHERE id=$1 AND status='DISPONIBLE' RETURNING *</span>. Si no se actualiza ninguna fila, la entrada ya estaba usada.</p></div>
+        <div class="sec-block"><h4>Autenticación y roles</h4><p>JWT de vida corta + refresh token, con el rol (admin / validador) embebido y verificado en cada endpoint protegido. El validador nunca recibe permisos para crear o editar entradas, ni siquiera si conoce la URL del endpoint.</p></div>
+        <div class="sec-block"><h4>Auditoría</h4><p>Cada intento — válido, repetido o inválido — queda registrado con entrada, evento, resultado, usuario validador y momento exacto, visible en la pestaña "Auditoría".</p></div>
+        <div class="sec-block"><h4>Fuera del alcance de esta demo</h4><p>Hash de contraseñas, HTTPS, cifrado en tránsito/reposo y almacenamiento persistente real: todo vive en memoria del navegador y se reinicia al recargar la página, ya que el objetivo aquí es mostrar el comportamiento funcional, no un backend productivo.</p></div>
+      </div></div>
+    </div>
+  `;
+}
+
+/* ---------- VALIDADOR ---------- */
+function renderValidador(){
+  const activeEvents = state.events.filter(e=>e.status==='activo');
+  app.innerHTML = `
+  <div class="shell">
+    <div class="rail">
+      <div class="rail-brand"><div class="dot"></div><span>ACCESO</span></div>
+      <div class="nav-item active"><span class="ic">▣</span>Escáner</div>
+      <div class="rail-footer">
+        <div class="rail-user"><b>${escapeHtml(state.currentUser.name)}</b>Validador</div>
+        <button class="logout-btn" id="logoutBtn">Cerrar sesión</button>
+      </div>
+    </div>
+    <div class="main">
+      <div class="main-header">
+        <div><h2>Escáner de acceso</h2><p>Selecciona el evento autorizado y escanea las entradas conforme llegan los asistentes.</p></div>
+        <div class="field" style="min-width:260px;margin:0">
+          <select id="validatorEvPicker">
+            ${activeEvents.length===0 ? `<option>No hay eventos activos</option>` :
+              activeEvents.map(e=>`<option value="${e.id}" ${e.id===state.validatorEventId?'selected':''}>${escapeHtml(e.name)}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      ${activeEvents.length===0 ? `<div class="empty">Pídele al administrador que active un evento con entradas generadas.</div>` : renderScannerBody()}
+    </div>
+  </div>`;
+  app.querySelector('#logoutBtn').onclick = logout;
+  const picker = app.querySelector('#validatorEvPicker');
+  if(picker) picker.onchange = ()=>{ state.validatorEventId = picker.value; state.scanResult=null; render(); };
+  if(activeEvents.length) wireScannerBody();
+}
+
+function renderScannerBody(){
+  const ev = state.events.find(e=>e.id===state.validatorEventId) || state.events.find(e=>e.status==='activo');
+  const evTickets = state.tickets.filter(t=>t.eventId===ev.id);
+  const disponibles = evTickets.filter(t=>t.status==='DISPONIBLE');
+
+  let stageHtml;
+  if(state.scanResult){
+    const r = state.scanResult;
+    if(r.result==='VALID'){
+      stageHtml = `<div class="result-overlay ok">
+        <div class="result-icon">🟢</div>
+        <div class="result-title ok">ENTRADA VÁLIDA</div>
+        <div class="result-sub">Registrada como usada · ${fmtDateTime(new Date())}</div>
+      </div>`;
+    } else if(r.result==='USED'){
+      stageHtml = `<div class="result-overlay used">
+        <div class="result-icon">🟠</div>
+        <div class="result-title used">ENTRADA YA UTILIZADA</div>
+        <div class="result-sub">Primer uso: <span class="mono">${fmtDateTime(r.usedAt)}</span><br/>Validado por: ${escapeHtml(r.usedBy||'—')}</div>
+      </div>`;
+    } else {
+      stageHtml = `<div class="result-overlay bad">
+        <div class="result-icon">🔴</div>
+        <div class="result-title bad">ENTRADA NO VÁLIDA</div>
+        <div class="result-sub">${r.reason==='otro evento' ? 'Esta entrada pertenece a otro evento.' : 'El token no existe o fue alterado.'}</div>
+      </div>`;
+    }
+  } else {
+    stageHtml = `<div class="scan-idle">
+      <div class="scan-target">▣</div>
+      <div>Esperando escaneo…</div>
+    </div>`;
+  }
+
+  return `
+    <div class="scanner-wrap">
+      <div class="scan-panel panel">
+        <div class="field">
+          <label>Simular lectura de cámara — elegir entrada</label>
+          <select id="quickPick">
+            <option value="">— elegir de la lista —</option>
+            ${evTickets.map(t=>`<option value="${t.token}">${t.token.slice(0,16)}… (${t.status})</option>`).join('')}
+          </select>
+        </div>
+        <div class="field">
+          <label>O pegar/escribir un token manualmente</label>
+          <input id="manualToken" class="mono" placeholder="token de 48 caracteres…" />
+        </div>
+        <button class="btn primary" id="scanBtn" style="width:100%">Escanear</button>
+        <div class="notice" style="margin-top:16px">${disponibles.length} de ${evTickets.length} entradas siguen disponibles para <b>&nbsp;${escapeHtml(ev.name)}</b>.</div>
+      </div>
+      <div class="scan-stage">${stageHtml}</div>
+    </div>
+    ${state.scanResult ? `<div style="margin-top:16px"><button class="btn primary" id="nextScanBtn">Escanear siguiente →</button></div>` : ''}
+  `;
+}
+
+function wireScannerBody(){
+  const quickPick = app.querySelector('#quickPick');
+  const manual = app.querySelector('#manualToken');
+  if(quickPick) quickPick.onchange = ()=>{ if(quickPick.value) manual.value = quickPick.value; };
+  const scanBtn = app.querySelector('#scanBtn');
+  if(scanBtn) scanBtn.onclick = async ()=>{
+    const token = (manual.value||'').trim();
+    if(!token) return;
+    const ev = state.events.find(e=>e.id===state.validatorEventId);
+    scanBtn.disabled = true;
+    const res = await validateSafe(token, ev.id, state.currentUser.name);
+    state.scanResult = res;
+    render();
+  };
+  const nextBtn = app.querySelector('#nextScanBtn');
+  if(nextBtn) nextBtn.onclick = ()=>{ state.scanResult=null; render(); };
+}
+
+/* =========================================================
+   DATOS DE EJEMPLO PARA EMPEZAR A PROBAR DE INMEDIATO
+   ========================================================= */
+(function seed(){
+  const ev = createEvent({name:'Conferencia Tech Lima 2026', date:'2026-11-14', time:'18:00', location:'Centro de Convenciones, Lima', capacity:30});
+  generateTickets(ev.id, 12);
+  const ev2 = createEvent({name:'Festival de Música — Noche Norte', date:'2026-12-02', time:'20:00', location:'Explanada Costa Verde', capacity:50});
+  generateTickets(ev2.id, 8);
+  state.selectedEventId = ev.id;
+})();
+
+render();
+</script>
+</body>
+</html>
